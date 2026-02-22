@@ -3,8 +3,9 @@ from kubrescue.watcher.monitor import monitor_namespace
 
 app = typer.Typer(help="KubeRescue - Kubernetes Auto Remediation Engine")
 
+
 @app.command()
-def monitor(namespace: str = "default"):
+def monitor(namespace: str = "default") -> None:
     """
     Monitor a namespace for failing pods and remediate.
     """

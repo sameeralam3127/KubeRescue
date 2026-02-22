@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "kubrescue"
 version = "0.1.0"
@@ -8,10 +12,6 @@ dependencies = [
     "typer[all]"
 ]
 
-[project.scripts]
-kubrescue = "kubrescue.cli:app"
-
-
 [project.optional-dependencies]
 dev = [
     "black",
@@ -19,8 +19,18 @@ dev = [
     "flake8",
     "bandit",
     "pre-commit",
-    "mypy"
+    "mypy",
+    "pytest",
+    "pytest-mock"
 ]
+
+[project.scripts]
+kubrescue = "kubrescue.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["kubrescue*"]
+
 [tool.black]
 line-length = 88
 target-version = ["py311"]
@@ -35,3 +45,10 @@ max-line-length = 88
 [tool.mypy]
 python_version = "3.11"
 strict = true
+ignore_missing_imports = true
+warn_unused_configs = true
+disallow_untyped_decorators = false
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
