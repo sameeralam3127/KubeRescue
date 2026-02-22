@@ -1,0 +1,12 @@
+[project]
+name = "kubrescue"
+version = "0.1.0"
+description = "Kubernetes Auto Remediation Engine"
+authors = [{ name = "Sameer Alam" }]
+dependencies = [
+    "kubernetes",
+    "typer[all]"
+]
+
+[project.scripts]
+kubrescue = "kubrescue.cli:app"
