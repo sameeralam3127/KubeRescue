@@ -10,3 +10,28 @@ dependencies = [
 
 [project.scripts]
 kubrescue = "kubrescue.cli:app"
+
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "ruff",
+    "flake8",
+    "bandit",
+    "pre-commit",
+    "mypy"
+]
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.flake8]
+max-line-length = 88
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
