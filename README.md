@@ -1,6 +1,37 @@
 # KubeRescue
+
 Autonomous Kubernetes failure detection and policy-driven auto-remediation engine for SRE teams.
 
+```mermaid
+flowchart LR
+    subgraph Kubernetes_Cluster
+        A1[Pods]
+        A2[Deployments]
+        A3[Nodes]
+    end
+
+    subgraph KubeRescue_Controller
+        B1[Watcher]
+        B2[Analyzer]
+        B3[Policy Engine]
+        B4[Remediator]
+        B5[Notifier]
+        B6[Metrics Exporter]
+    end
+
+    A1 --> B1
+    A2 --> B1
+    A3 --> B1
+
+    B1 --> B2
+    B2 --> B3
+    B3 --> B4
+    B4 --> A1
+    B4 --> A2
+
+    B3 --> B5
+    B4 --> B6
+```
 
 ```mermaid
 flowchart TD
