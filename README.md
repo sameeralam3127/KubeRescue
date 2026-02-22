@@ -2,6 +2,8 @@
 
 Autonomous Kubernetes failure detection and policy-driven auto-remediation engine for SRE teams.
 
+### Controller Architecture Diagram
+
 ```mermaid
 flowchart LR
     subgraph Kubernetes_Cluster
@@ -32,6 +34,10 @@ flowchart LR
     B3 --> B5
     B4 --> B6
 ```
+
+---
+
+### Controller Architecture Diagram
 
 ```mermaid
 flowchart TD
