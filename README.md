@@ -1,177 +1,129 @@
-### KubeRescue
+# KubeRescue
 
-> ⚠️ **Status: Alpha – Under Active Development. Not Production Ready.**
+KubeRescue is a Kubernetes auto-remediation project focused on reducing operational toil in development and staging clusters.
 
-Autonomous Kubernetes failure detection and policy-driven auto-remediation engine for SRE and platform engineering teams.
+Phase 1 is intentionally narrow: detect pods stuck in `CrashLoopBackOff` and restart them by deleting the pod so its controller can recreate it.
 
-KubeRescue is designed to reduce operational toil by automatically detecting workload failures and applying safe, policy-driven remediation strategies inside Kubernetes clusters.
+## Phase 1 Status
 
----
+KubeRescue is currently an early MVP and is not production-ready.
 
-## ⚠️ Project Status
+Current scope:
 
-KubeRescue is currently under active development and testing.
+- Detect `CrashLoopBackOff` pod states
+- Continuously watch a single namespace using the Kubernetes Python client
+- Restart failed pods by deleting them through the Kubernetes API
+- Provide a small CLI entrypoint for local development and testing
 
-This project is **not production-ready** and must **NOT** be deployed in production environments at this time.
+Not in Phase 1 yet:
 
-Features, APIs, and behavior may change without notice as the architecture evolves.
+- Retry limits and cooldown windows
+- Policy-driven remediation rules
+- Slack or webhook notifications
+- Prometheus metrics
+- Rollback or scale actions
+- Helm chart or production deployment support
 
-Use only in development or staging clusters.
+Use this project only in development or staging clusters until safety controls are implemented.
 
----
+## Why This Project Exists
 
-Modern Kubernetes environments require continuous monitoring and rapid remediation of failures such as:
+Kubernetes failures such as `CrashLoopBackOff` often create noisy, repetitive operational work during development and testing. KubeRescue explores a safer path toward automated remediation, starting with one narrow and understandable recovery action.
 
-- CrashLoopBackOff
-- OOMKilled containers
-- ImagePullBackOff
-- Misconfigured deployments
-- Restart storms
+The long-term vision is:
 
-KubeRescue aims to implement:
+`Detection -> Classification -> Policy Evaluation -> Safe Remediation -> Observability`
 
-```
-Detection → Classification → Policy Evaluation → Safe Remediation → Observability
-```
+Phase 1 only delivers the first step of that journey for a single failure mode.
 
-With SRE-grade safety controls such as:
-
-- Retry limits
-- Cooldown windows
-- Idempotent actions
-- Escalation policies
-- Metrics export
-
----
-
-### High-Level Controller Architecture
-
-```mermaid
-flowchart LR
-    subgraph Kubernetes_Cluster
-        A1[Pods]
-        A2[Deployments]
-        A3[Nodes]
-    end
-
-    subgraph KubeRescue_Controller
-        B1[Watcher]
-        B2[Analyzer]
-        B3[Policy Engine]
-        B4[Remediator]
-        B5[Notifier]
-        B6[Metrics Exporter]
-    end
-
-    A1 --> B1
-    A2 --> B1
-    A3 --> B1
-
-    B1 --> B2
-    B2 --> B3
-    B3 --> B4
-    B4 --> A1
-    B4 --> A2
-
-    B3 --> B5
-    B4 --> B6
-```
-
----
-
-### Workflow Execution Flow
+## How Phase 1 Works
 
 ```mermaid
 flowchart TD
-    A[Start KubeRescue CLI] --> B[Initialize Kubernetes Client]
-    B --> C[Load Policy Configuration YAML]
-    C --> D[Start Cluster Watcher]
-
-    D --> E{Failure Detected?}
-
-    E -- No --> D
-    E -- Yes --> F[Fetch Pod Details]
-    F --> G[Collect Container Logs]
-
-    G --> H[Analyzer Module]
-    H --> I[Classify Failure Type]
-
-    I --> J{Policy Exists?}
-
-    J -- No --> K[Send Alert Only]
-    J -- Yes --> L[Decision Engine]
-
-    L --> M{Action Allowed? Retry Limit / Cooldown Check}
-
-    M -- No --> N[Escalate Alert]
-    M -- Yes --> O[Execute Remediation]
-
-    O --> P{Action Type}
-
-    P --> |Restart Pod| Q[Delete Pod]
-    P --> |Scale Deployment| R[Update Replica Count]
-    P --> |Rollback| S[Revert ReplicaSet]
-
-    Q --> T[Verify Recovery]
-    R --> T
-    S --> T
-
-    T --> U{Recovered?}
-
-    U -- Yes --> V[Log Success + Metrics Update]
-    U -- No --> W[Trigger Escalation Policy]
-
-    V --> X[Send Slack / Webhook Notification]
-    W --> X
-
-    X --> D
+    A[Start KubeRescue CLI] --> B[Load Kubernetes client]
+    B --> C[List pods in namespace]
+    C --> D{CrashLoopBackOff detected?}
+    D -- No --> E[Sleep 10 seconds]
+    D -- Yes --> F[Delete pod]
+    F --> E
+    E --> C
 ```
 
----
+## Current Architecture
 
-### Current Features (Alpha)
+```mermaid
+flowchart LR
+    A[Namespace Pod Polling] --> B[CrashLoop Detector]
+    B --> C[Pod Restart Action]
+```
 
-- CrashLoopBackOff detection
-- Automated pod restart
-- Strict type checking (mypy)
-- Security scanning (Bandit)
-- Linting (Ruff)
-- Code formatting (Black)
-- Pre-commit enforcement
-- CI pipeline ready
+## Installation
 
----
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
 
-### Run CLI (Development Only)
+If you want development tooling as well:
+
+```bash
+pip install -e ".[dev]"
+```
+
+## Usage
+
+KubeRescue uses in-cluster Kubernetes configuration first and falls back to your local kubeconfig automatically.
+
+Run the Phase 1 monitor against a namespace:
 
 ```bash
 kubrescue monitor --namespace default
 ```
 
----
+When a pod enters `CrashLoopBackOff`, KubeRescue deletes that pod and lets its owning controller recreate it.
 
-### Engineering Principles
+## Safety Notes
 
-KubeRescue is built with the following principles:
+Current behavior is intentionally simple, which also means it has important limitations:
 
-- Safety over aggression
-- Explicit remediation policies
-- Idempotent operations
-- Observable actions
-- Strong typing and lint enforcement
-- Security scanning by default
+- There is no retry budget
+- There is no cooldown protection
+- There is no remediation policy layer
+- There is no notification or audit sink beyond console output
 
----
+Because of that, this repository should be treated as an MVP for experimentation, not an unattended production controller.
 
-### Roadmap
+## Developer Tooling
 
-- Retry & cooldown protection engine
-- Kubernetes Watch API integration
-- Policy-based YAML configuration
-- Slack / webhook notifier
-- Prometheus metrics exporter
-- Helm chart deployment
-- Docker image distribution
-- Multi-namespace support
+The repository already includes basic quality gates:
 
----
+- `pytest` for tests
+- `mypy` for type checking
+- `ruff` and `flake8` for linting
+- `black` for formatting
+- `bandit` for security scanning
+- GitHub Actions CI for automated checks
+
+## Roadmap
+
+Planned next steps after Phase 1:
+
+1. Add retry limits and cooldown windows
+2. Replace polling with Kubernetes watch streams
+3. Introduce policy-based remediation configuration
+4. Add notifications and observability
+5. Package the project for cluster deployment
+
+## Contributing
+
+This project is still evolving quickly. If you want to contribute, the most helpful areas right now are:
+
+- Safer remediation controls
+- Better failure classification
+- Local demo environments and examples
+- Tests around watcher and remediation behavior
+
+## Vision
+
+KubeRescue aims to become a safe and policy-aware remediation engine for Kubernetes operators. The path to that goal is to earn trust one small, verifiable feature at a time.
