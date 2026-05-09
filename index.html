@@ -1,1 +1,654 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KubeRescue - Kubernetes Auto-Remediation Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif'],
+                        'mono': ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        'kube': {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                            950: '#0f1f4d',
+                        },
+                        'dark': {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        },
+                        'accent': {
+                            400: '#34d399',
+                            500: '#10b981',
+                            600: '#059669',
+                        },
+                        'warning': {
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        },
+                        'danger': {
+                            400: '#f87171',
+                            500: '#ef4444',
+                            600: '#dc2626',
+                        },
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        @keyframes slide-up {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes gradient-shift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .animate-float { animation: float 6s ease-in-out infinite; }
+        .animate-pulse-slow { animation: pulse-slow 3s ease-in-out infinite; }
+        .animate-slide-up { animation: slide-up 0.8s ease-out forwards; }
+        .gradient-animated {
+            background: linear-gradient(270deg, #3b82f6, #10b981, #8b5cf6, #3b82f6);
+            background-size: 300% 300%;
+            animation: gradient-shift 8s ease infinite;
+        }
+        .glass-bg {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:hover {
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 60px -12px rgba(0, 0, 0, 0.5);
+        }
+        .code-block {
+            background: rgba(2, 6, 23, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+        }
+        .code-block pre {
+            overflow-x: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.2) transparent;
+        }
+        .code-block pre::-webkit-scrollbar {
+            height: 6px;
+        }
+        .code-block pre::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .code-block pre::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+        }
+        .dot-pattern {
+            background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+        .grid-lines {
+            background-image:
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+        .terminal-line::before {
+            content: '$ ';
+            color: #10b981;
+            font-weight: 600;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        .highlight-glow {
+            box-shadow: 0 0 40px rgba(59, 130, 246, 0.15);
+        }
+        .badge-beta {
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+        }
+    </style>
+</head>
+<body class="bg-dark-950 text-white font-sans antialiased min-h-screen dot-pattern">
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 glass-bg border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-kube-500 to-accent-500 flex items-center justify-center shadow-lg shadow-blue-500/25">
+                        <i data-lucide="life-buoy" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <span class="font-bold text-xl tracking-tight">Kube<span class="text-kube-400">Rescue</span></span>
+                    <span class="badge-beta text-xs font-bold px-2 py-0.5 rounded-full text-white">MVP</span>
+                </div>
+                <div class="hidden md:flex items-center gap-8 text-sm font-medium text-dark-300">
+                    <a href="#what-it-does" class="hover:text-white transition-colors duration-200">Features</a>
+                    <a href="#quick-start" class="hover:text-white transition-colors duration-200">Quick Start</a>
+                    <a href="#roadmap" class="hover:text-white transition-colors duration-200">Roadmap</a>
+                    <a href="https://github.com/sameeralam3127/KubeRescue" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-all duration-200 text-white border border-white/10">
+                        <i data-lucide="github" class="w-4 h-4"></i>
+                        GitHub
+                    </a>
+                </div>
+                <button id="mobileMenuBtn" class="md:hidden p-2 rounded-lg hover:bg-white/5 transition-colors">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile menu -->
+        <div id="mobileMenu" class="hidden md:hidden glass-bg border-t border-white/5 px-4 py-4 space-y-3">
+            <a href="#what-it-does" class="block py-2 text-dark-300 hover:text-white transition-colors">Features</a>
+            <a href="#quick-start" class="block py-2 text-dark-300 hover:text-white transition-colors">Quick Start</a>
+            <a href="#roadmap" class="block py-2 text-dark-300 hover:text-white transition-colors">Roadmap</a>
+            <a href="https://github.com/sameeralam3127/KubeRescue" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 py-2 text-white">
+                <i data-lucide="github" class="w-4 h-4"></i> GitHub
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative pt-32 pb-20 sm:pt-40 sm:pb-28 overflow-hidden grid-lines">
+        <div class="absolute inset-0 bg-gradient-to-b from-kube-950/40 via-dark-950 to-dark-950 pointer-events-none"></div>
+        <!-- Floating orbs -->
+        <div class="absolute top-20 left-10 w-72 h-72 bg-kube-500/10 rounded-full blur-3xl animate-pulse-slow"></div>
+        <div class="absolute top-40 right-10 w-96 h-96 bg-accent-500/8 rounded-full blur-3xl animate-pulse-slow" style="animation-delay: 1s;"></div>
+        <div class="absolute bottom-20 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-kube-600/6 rounded-full blur-3xl animate-pulse-slow" style="animation-delay: 2s;"></div>
+
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="animate-slide-up">
+                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-warning-500/10 border border-warning-500/20 text-warning-400 text-sm font-semibold mb-6">
+                    <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                    Not production-ready yet — for dev & staging clusters only
+                </div>
+            </div>
+            <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6 animate-slide-up" style="animation-delay: 0.1s;">
+                Your Kubernetes Pods
+                <br>
+                <span class="gradient-animated bg-clip-text text-transparent">Never Stay Broken</span>
+            </h1>
+            <p class="text-lg sm:text-xl text-dark-300 max-w-3xl mx-auto mb-10 animate-slide-up" style="animation-delay: 0.2s;">
+                A lightweight auto-remediation engine that watches your pods, detects
+                <span class="text-danger-400 font-semibold">CrashLoopBackOff</span> states,
+                and gracefully restarts them — so your controllers always have a healthy replacement running.
+            </p>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style="animation-delay: 0.3s;">
+                <a href="#quick-start" class="group flex items-center gap-3 px-8 py-4 rounded-xl bg-white text-dark-900 font-semibold text-lg hover:bg-dark-100 transition-all duration-300 shadow-2xl shadow-white/10 hover:shadow-white/20">
+                    Get Started
+                    <i data-lucide="arrow-right" class="w-5 h-5 group-hover:translate-x-1 transition-transform"></i>
+                </a>
+                <a href="https://github.com/sameeralam3127/KubeRescue" target="_blank" rel="noopener noreferrer" class="flex items-center gap-3 px-8 py-4 rounded-xl bg-white/5 border border-white/10 text-white font-semibold text-lg hover:bg-white/10 transition-all duration-300">
+                    <i data-lucide="github" class="w-5 h-5"></i>
+                    View on GitHub
+                </a>
+            </div>
+            <p class="text-dark-400 text-sm mt-6 animate-slide-up" style="animation-delay: 0.4s;">
+                <code class="font-mono text-accent-400 bg-accent-500/10 px-2 py-0.5 rounded text-xs">pip install -e ".[dev]"</code>
+                &nbsp;— it's that simple
+            </p>
+        </div>
+    </section>
+
+    <!-- Stats / Trust indicators -->
+    <section class="relative py-12 border-y border-white/5">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+                <div>
+                    <div class="text-3xl font-extrabold text-white mb-1">🐍</div>
+                    <p class="text-dark-400 text-sm font-medium">Pure Python</p>
+                </div>
+                <div>
+                    <div class="text-3xl font-extrabold text-white mb-1">⚡</div>
+                    <p class="text-dark-400 text-sm font-medium">Lightweight MVP</p>
+                </div>
+                <div>
+                    <div class="text-3xl font-extrabold text-white mb-1">🐳</div>
+                    <p class="text-dark-400 text-sm font-medium">Docker Ready</p>
+                </div>
+                <div>
+                    <div class="text-3xl font-extrabold text-white mb-1">🔓</div>
+                    <p class="text-dark-400 text-sm font-medium">MIT Licensed</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- What It Does -->
+    <section id="what-it-does" class="py-20 sm:py-28">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl sm:text-4xl font-extrabold mb-4">What It <span class="text-kube-400">Does</span></h2>
+                <p class="text-dark-400 text-lg max-w-2xl mx-auto">A simple yet effective remediation loop for development and staging clusters.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6 mb-16">
+                <div class="glass-card rounded-2xl p-8 relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-kube-500/5 rounded-bl-full -mr-8 -mt-8 group-hover:scale-150 transition-transform duration-700"></div>
+                    <div class="relative z-10">
+                        <div class="w-12 h-12 rounded-xl bg-kube-500/15 flex items-center justify-center mb-5">
+                            <i data-lucide="eye" class="w-6 h-6 text-kube-400"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">Watches Pods</h3>
+                        <p class="text-dark-300">Monitors all pods in a specified Kubernetes namespace, keeping a constant eye on container states.</p>
+                    </div>
+                </div>
+                <div class="glass-card rounded-2xl p-8 relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-danger-500/5 rounded-bl-full -mr-8 -mt-8 group-hover:scale-150 transition-transform duration-700"></div>
+                    <div class="relative z-10">
+                        <div class="w-12 h-12 rounded-xl bg-danger-500/15 flex items-center justify-center mb-5">
+                            <i data-lucide="bug" class="w-6 h-6 text-danger-400"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">Detects CrashLoopBackOff</h3>
+                        <p class="text-dark-300">Identifies containers stuck in <code class="font-mono text-danger-400 bg-danger-500/10 px-1.5 py-0.5 rounded text-xs">CrashLoopBackOff</code> state and flags them for remediation.</p>
+                    </div>
+                </div>
+                <div class="glass-card rounded-2xl p-8 relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-accent-500/5 rounded-bl-full -mr-8 -mt-8 group-hover:scale-150 transition-transform duration-700"></div>
+                    <div class="relative z-10">
+                        <div class="w-12 h-12 rounded-xl bg-accent-500/15 flex items-center justify-center mb-5">
+                            <i data-lucide="trash-2" class="w-6 h-6 text-accent-400"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">Deletes Failed Pods</h3>
+                        <p class="text-dark-300">Removes the problematic pod so its controller can spin up a fresh, healthy replacement automatically.</p>
+                    </div>
+                </div>
+                <div class="glass-card rounded-2xl p-8 relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-kube-500/5 rounded-bl-full -mr-8 -mt-8 group-hover:scale-150 transition-transform duration-700"></div>
+                    <div class="relative z-10">
+                        <div class="w-12 h-12 rounded-xl bg-kube-500/15 flex items-center justify-center mb-5">
+                            <i data-lucide="refresh-cw" class="w-6 h-6 text-kube-400"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">Kubernetes Recreates</h3>
+                        <p class="text-dark-300">The pod's Deployment, ReplicaSet, or StatefulSet controller automatically recreates the pod after deletion.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- What It Doesn't Do Yet -->
+            <div class="glass-bg rounded-2xl p-8 sm:p-10 border border-white/5">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-xl bg-warning-500/15 flex items-center justify-center">
+                        <i data-lucide="construction" class="w-5 h-5 text-warning-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold">What It <span class="text-warning-400">Doesn't Do Yet</span></h3>
+                </div>
+                <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <span class="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/3 border border-white/5 text-dark-300 text-sm">
+                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Retry budgets
+                    </span>
+                    <span class="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/3 border border-white/5 text-dark-300 text-sm">
+                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Cooldown windows
+                    </span>
+                    <span class="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/3 border border-white/5 text-dark-300 text-sm">
+                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Policy-based remediation
+                    </span>
+                    <span class="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/3 border border-white/5 text-dark-300 text-sm">
+                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Slack / webhook output
+                    </span>
+                    <span class="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/3 border border-white/5 text-dark-300 text-sm">
+                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Metrics & monitoring
+                    </span>
+                    <span class="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/3 border border-white/5 text-dark-300 text-sm">
+                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Helm chart packaging
+                    </span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Start -->
+    <section id="quick-start" class="py-20 sm:py-28 bg-dark-950/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl sm:text-4xl font-extrabold mb-4">🚀 Quick Start</h2>
+                <p class="text-dark-400 text-lg max-w-2xl mx-auto">Get KubeRescue running in under two minutes.</p>
+            </div>
+
+            <div class="max-w-3xl mx-auto space-y-8">
+                <!-- Step 1 -->
+                <div class="glass-card rounded-2xl p-6 sm:p-8">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="w-8 h-8 rounded-lg bg-kube-500 text-white flex items-center justify-center text-sm font-bold">1</span>
+                        <h3 class="font-semibold text-lg">Create & Activate Virtual Environment</h3>
+                    </div>
+                    <div class="code-block p-4 sm:p-6">
+                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-accent-400">python</span> -m venv .venv
+<span class="text-accent-400">source</span> .venv/bin/activate
+<span class="text-accent-400">pip</span> install -e <span class="text-warning-400">".[dev]"</span></code></pre>
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="glass-card rounded-2xl p-6 sm:p-8">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="w-8 h-8 rounded-lg bg-kube-500 text-white flex items-center justify-center text-sm font-bold">2</span>
+                        <h3 class="font-semibold text-lg">Run Unit Tests</h3>
+                    </div>
+                    <div class="code-block p-4 sm:p-6">
+                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-accent-400">pytest</span> -v</code></pre>
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="glass-card rounded-2xl p-6 sm:p-8">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="w-8 h-8 rounded-lg bg-kube-500 text-white flex items-center justify-center text-sm font-bold">3</span>
+                        <h3 class="font-semibold text-lg">Run KubeRescue</h3>
+                    </div>
+                    <div class="code-block p-4 sm:p-6">
+                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-accent-400">kuberescue</span> --namespace default</code></pre>
+                    </div>
+                    <p class="text-dark-400 text-sm mt-4 flex items-center gap-2">
+                        <i data-lucide="info" class="w-4 h-4"></i>
+                        Tries in-cluster config first, falls back to local kubeconfig.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Docker Section -->
+    <section class="py-20 sm:py-28">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-kube-500/10 border border-kube-500/20 text-kube-400 text-sm font-semibold mb-4">
+                    <i data-lucide="container" class="w-4 h-4"></i> Docker Ready
+                </div>
+                <h2 class="text-3xl sm:text-4xl font-extrabold mb-4">🐳 Docker Image</h2>
+                <p class="text-dark-400 text-lg max-w-2xl mx-auto">Build once, run anywhere. The Docker build includes the full test suite.</p>
+            </div>
+
+            <div class="max-w-3xl mx-auto space-y-6">
+                <div class="glass-card rounded-2xl p-6 sm:p-8">
+                    <h3 class="font-semibold text-lg mb-4">Build the Image</h3>
+                    <div class="code-block p-4 sm:p-6">
+                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-accent-400">docker</span> build -t kuberescue:local .</code></pre>
+                    </div>
+                </div>
+                <div class="glass-card rounded-2xl p-6 sm:p-8">
+                    <h3 class="font-semibold text-lg mb-4">Check the CLI</h3>
+                    <div class="code-block p-4 sm:p-6">
+                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-accent-400">docker</span> run --rm kuberescue:local --help</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Docker Desktop Kubernetes Demo -->
+    <section class="py-20 sm:py-28 bg-dark-950/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl sm:text-4xl font-extrabold mb-4">🧪 Docker Desktop K8s Demo</h2>
+                <p class="text-dark-400 text-lg max-w-2xl mx-auto">A safe, isolated demo that creates an intentional CrashLoopBackOff to showcase KubeRescue in action.</p>
+            </div>
+
+            <div class="max-w-3xl mx-auto space-y-6">
+                <div class="glass-card rounded-2xl p-6 sm:p-8">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="w-7 h-7 rounded-lg bg-warning-500/20 text-warning-400 flex items-center justify-center text-xs font-bold">!</span>
+                        <h3 class="font-semibold text-base">Prerequisites</h3>
+                    </div>
+                    <ul class="space-y-2 text-dark-300 text-sm">
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-accent-400 flex-shrink-0"></i> Docker Desktop running with Kubernetes enabled</li>
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-accent-400 flex-shrink-0"></i> <code class="font-mono text-dark-200 bg-dark-800 px-1.5 py-0.5 rounded text-xs">kubectl config current-context</code> returns <code class="font-mono text-kube-300 bg-dark-800 px-1.5 py-0.5 rounded text-xs">docker-desktop</code></li>
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-accent-400 flex-shrink-0"></i> <code class="font-mono text-dark-200 bg-dark-800 px-1.5 py-0.5 rounded text-xs">kuberescue:local</code> image exists from Docker build</li>
+                    </ul>
+                </div>
+
+                <div class="glass-card rounded-2xl p-6 sm:p-8">
+                    <h3 class="font-semibold text-lg mb-4">Run the Demo</h3>
+                    <div class="code-block p-4 sm:p-6 space-y-3">
+                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-dark-500"># Create test namespace</span>
+<span class="text-accent-400">kubectl</span> create namespace kuberescue-test
+
+<span class="text-dark-500"># Deploy crashing workload</span>
+<span class="text-accent-400">kubectl</span> apply -n kuberescue-test -f examples/crashloop-demo.yaml
+
+<span class="text-dark-500"># Run KubeRescue</span>
+<span class="text-accent-400">kuberescue</span> --namespace kuberescue-test
+
+<span class="text-dark-500"># Watch pods get replaced (in another terminal)</span>
+<span class="text-accent-400">kubectl</span> get pods -n kuberescue-test
+
+<span class="text-dark-500"># Clean up</span>
+<span class="text-accent-400">kubectl</span> delete namespace kuberescue-test</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Project Structure -->
+    <section class="py-20 sm:py-28">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl sm:text-4xl font-extrabold mb-4">📁 Project Structure</h2>
+                <p class="text-dark-400 text-lg max-w-2xl mx-auto">Clean, minimal, and well-organized codebase.</p>
+            </div>
+
+            <div class="max-w-2xl mx-auto">
+                <div class="code-block p-6 sm:p-8">
+                    <pre class="font-mono text-sm text-dark-200 leading-relaxed"><code>.
+├── <span class="text-kube-400">deploy/</span><span class="text-dark-500">kubernetes/</span>     Manifests
+├── <span class="text-kube-400">docs/</span>                  Docs
+├── <span class="text-kube-400">examples/</span>              Demo workloads
+├── <span class="text-kube-400">kuberescue/</span>             Python package
+├── <span class="text-kube-400">tests/</span>                 Unit tests
+├── <span class="text-dark-200">Dockerfile</span>             Container build
+├── <span class="text-dark-200">pyproject.toml</span>         Config
+└── <span class="text-dark-200">README.md</span>              User guide</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Roadmap -->
+    <section id="roadmap" class="py-20 sm:py-28 bg-dark-950/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl sm:text-4xl font-extrabold mb-4">🗺️ Roadmap</h2>
+                <p class="text-dark-400 text-lg max-w-2xl mx-auto">What's coming next for KubeRescue.</p>
+            </div>
+
+            <div class="max-w-3xl mx-auto">
+                <div class="relative">
+                    <!-- Timeline line -->
+                    <div class="absolute left-5 top-0 bottom-0 w-0.5 bg-white/8 hidden sm:block"></div>
+
+                    <div class="space-y-6">
+                        <div class="flex gap-4 sm:gap-8 items-start relative">
+                            <div class="w-10 h-10 rounded-full bg-kube-500/20 border-2 border-kube-500 flex items-center justify-center flex-shrink-0 z-10 hidden sm:flex">
+                                <i data-lucide="check" class="w-5 h-5 text-kube-400"></i>
+                            </div>
+                            <div class="glass-card rounded-2xl p-5 flex-1">
+                                <h3 class="font-bold text-white mb-1">✅ Core MVP</h3>
+                                <p class="text-dark-300 text-sm">Namespace watching, CrashLoopBackOff detection, pod deletion. <span class="text-accent-400 font-medium">Done!</span></p>
+                            </div>
+                        </div>
+                        <div class="flex gap-4 sm:gap-8 items-start relative">
+                            <div class="w-10 h-10 rounded-full bg-warning-500/20 border-2 border-warning-500 flex items-center justify-center flex-shrink-0 z-10 hidden sm:flex">
+                                <i data-lucide="clock" class="w-5 h-5 text-warning-400"></i>
+                            </div>
+                            <div class="glass-card rounded-2xl p-5 flex-1">
+                                <h3 class="font-bold text-white mb-1">🔜 Retry Limits & Cooldowns</h3>
+                                <p class="text-dark-300 text-sm">Prevent infinite restart loops with configurable retry budgets and cooldown windows.</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-4 sm:gap-8 items-start relative">
+                            <div class="w-10 h-10 rounded-full bg-warning-500/20 border-2 border-warning-500 flex items-center justify-center flex-shrink-0 z-10 hidden sm:flex">
+                                <i data-lucide="clock" class="w-5 h-5 text-warning-400"></i>
+                            </div>
+                            <div class="glass-card rounded-2xl p-5 flex-1">
+                                <h3 class="font-bold text-white mb-1">🔜 Watch Streams</h3>
+                                <p class="text-dark-300 text-sm">Replace polling with Kubernetes watch streams for real-time event-driven remediation.</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-4 sm:gap-8 items-start relative">
+                            <div class="w-10 h-10 rounded-full bg-dark-700/50 border-2 border-dark-600 flex items-center justify-center flex-shrink-0 z-10 hidden sm:flex">
+                                <i data-lucide="circle" class="w-4 h-4 text-dark-500"></i>
+                            </div>
+                            <div class="glass-card rounded-2xl p-5 flex-1">
+                                <h3 class="font-bold text-white mb-1">📋 Policy-Based Rules</h3>
+                                <p class="text-dark-300 text-sm">Define custom remediation policies for different workloads and namespaces.</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-4 sm:gap-8 items-start relative">
+                            <div class="w-10 h-10 rounded-full bg-dark-700/50 border-2 border-dark-600 flex items-center justify-center flex-shrink-0 z-10 hidden sm:flex">
+                                <i data-lucide="circle" class="w-4 h-4 text-dark-500"></i>
+                            </div>
+                            <div class="glass-card rounded-2xl p-5 flex-1">
+                                <h3 class="font-bold text-white mb-1">🔔 Notifications & Metrics</h3>
+                                <p class="text-dark-300 text-sm">Slack, webhook, and Prometheus metrics output for observability.</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-4 sm:gap-8 items-start relative">
+                            <div class="w-10 h-10 rounded-full bg-dark-700/50 border-2 border-dark-600 flex items-center justify-center flex-shrink-0 z-10 hidden sm:flex">
+                                <i data-lucide="circle" class="w-4 h-4 text-dark-500"></i>
+                            </div>
+                            <div class="glass-card rounded-2xl p-5 flex-1">
+                                <h3 class="font-bold text-white mb-1">📦 Helm Chart</h3>
+                                <p class="text-dark-300 text-sm">Package KubeRescue for safer, versioned cluster deployments.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-20 sm:py-28">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="glass-card rounded-3xl p-10 sm:p-16 highlight-glow relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-kube-500/8 rounded-bl-full -mr-16 -mt-16"></div>
+                <div class="absolute bottom-0 left-0 w-64 h-64 bg-accent-500/8 rounded-tr-full -ml-16 -mb-16"></div>
+                <div class="relative z-10">
+                    <h2 class="text-3xl sm:text-4xl font-extrabold mb-4">Ready to Auto-Heal Your Clusters?</h2>
+                    <p class="text-dark-300 text-lg mb-8 max-w-xl mx-auto">KubeRescue is open source and MIT licensed. Clone it, test it, and contribute back!</p>
+                    <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                        <a href="https://github.com/sameeralam3127/KubeRescue" target="_blank" rel="noopener noreferrer" class="group flex items-center gap-3 px-8 py-4 rounded-xl bg-white text-dark-900 font-semibold text-lg hover:bg-dark-100 transition-all duration-300 shadow-xl">
+                            <i data-lucide="github" class="w-5 h-5"></i>
+                            Star on GitHub
+                            <i data-lucide="external-link" class="w-4 h-4"></i>
+                        </a>
+                        <a href="#quick-start" class="flex items-center gap-3 px-8 py-4 rounded-xl bg-white/5 border border-white/10 text-white font-semibold text-lg hover:bg-white/10 transition-all duration-300">
+                            <i data-lucide="terminal" class="w-5 h-5"></i>
+                            Quick Start
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/5 py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-kube-500 to-accent-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                        <i data-lucide="life-buoy" class="w-4 h-4 text-white"></i>
+                    </div>
+                    <span class="font-bold text-lg">Kube<span class="text-kube-400">Rescue</span></span>
+                </div>
+                <div class="flex items-center gap-6 text-sm text-dark-400">
+                    <a href="https://github.com/sameeralam3127/KubeRescue/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">MIT License</a>
+                    <a href="https://github.com/sameeralam3127/KubeRescue" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors flex items-center gap-1.5">
+                        <i data-lucide="github" class="w-4 h-4"></i> GitHub
+                    </a>
+                </div>
+                <p class="text-dark-500 text-sm">&copy; 2026 KubeRescue. Not production-ready.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        lucide.createIcons();
+
+        // Mobile menu toggle
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const mobileMenu = document.getElementById('mobileMenu');
+
+        mobileMenuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+            const icon = mobileMenuBtn.querySelector('i');
+            if (mobileMenu.classList.contains('hidden')) {
+                icon.setAttribute('data-lucide', 'menu');
+            } else {
+                icon.setAttribute('data-lucide', 'x');
+            }
+            lucide.createIcons();
+        });
+
+        // Close mobile menu on link click
+        mobileMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                mobileMenu.classList.add('hidden');
+                const icon = mobileMenuBtn.querySelector('i');
+                icon.setAttribute('data-lucide', 'menu');
+                lucide.createIcons();
+            });
+        });
+
+        // Smooth scroll for all anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    const offset = 80;
+                    const position = target.getBoundingClientRect().top + window.pageYOffset - offset;
+                    window.scrollTo({ top: position, behavior: 'smooth' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
