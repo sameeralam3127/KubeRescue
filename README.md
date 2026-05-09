@@ -78,10 +78,78 @@ KubeRescue uses in-cluster Kubernetes configuration first and falls back to your
 Run the Phase 1 monitor against a namespace:
 
 ```bash
-kubrescue monitor --namespace default
+kubrescue --namespace default
 ```
 
 When a pod enters `CrashLoopBackOff`, KubeRescue deletes that pod and lets its owning controller recreate it.
+
+## Docker Desktop Kubernetes Test
+
+You can test the Phase 1 remediation loop locally with Docker Desktop Kubernetes.
+This creates an isolated namespace, starts a pod that intentionally enters
+`CrashLoopBackOff`, and runs KubeRescue against it.
+
+Prerequisites:
+
+- Docker Desktop is running
+- Kubernetes is enabled in Docker Desktop
+- `kubectl config current-context` returns `docker-desktop`
+- Project dependencies are installed with `pip install -e ".[dev]"`
+
+Build the local KubeRescue image:
+
+```bash
+docker build -t kubrescue:local .
+```
+
+The Docker build runs the test suite before producing the final image.
+
+Create a test namespace:
+
+```bash
+kubectl create namespace kubrescue-test
+```
+
+Create a deployment that uses the local image and exits immediately:
+
+```bash
+kubectl create deployment crashloop-demo \
+  --namespace kubrescue-test \
+  --image=kubrescue:local \
+  -- python -c 'import sys; sys.exit(1)'
+```
+
+Confirm Kubernetes reports the pod as `CrashLoopBackOff`:
+
+```bash
+kubectl get pod -n kubrescue-test \
+  -o jsonpath='{range .items[*]}{.metadata.name}{" reason="}{.status.containerStatuses[0].state.waiting.reason}{" restarts="}{.status.containerStatuses[0].restartCount}{"\n"}{end}'
+```
+
+Run KubeRescue against the test namespace:
+
+```bash
+kubrescue --namespace kubrescue-test
+```
+
+Expected behavior:
+
+- KubeRescue logs that it is monitoring `kubrescue-test`
+- KubeRescue detects the `CrashLoopBackOff` pod
+- KubeRescue deletes the failed pod
+- The deployment creates a replacement pod with a new name
+
+In another terminal, verify the replacement pod:
+
+```bash
+kubectl get pods -n kubrescue-test
+```
+
+Clean up when finished:
+
+```bash
+kubectl delete namespace kubrescue-test
+```
 
 ## Safety Notes
 
