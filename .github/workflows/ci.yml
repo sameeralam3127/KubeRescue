@@ -37,9 +37,9 @@ jobs:
         run: flake8 .
 
       - name: Run Bandit (security scan)
-        run: bandit -r kubrescue
+        run: bandit -r kuberescue
 
       - name: Run MyPy (type checking)
-        run: mypy kubrescue
+        run: mypy kuberescue
       - name: Run Pytest
         run: pytest -v

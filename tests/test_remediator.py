@@ -1,5 +1,5 @@
 from unittest.mock import MagicMock
-from kubrescue.remediator.actions import restart_pod
+from kuberescue.remediator.actions import restart_pod
 
 
 def test_restart_pod_success() -> None:

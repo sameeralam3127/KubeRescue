@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kuberescue-system
+  labels:
+    app.kubernetes.io/name: kuberescue
+    app.kubernetes.io/part-of: kuberescue

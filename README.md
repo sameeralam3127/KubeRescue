@@ -1,197 +1,179 @@
 # KubeRescue
 
-KubeRescue is a Kubernetes auto-remediation project focused on reducing operational toil in development and staging clusters.
+KubeRescue is a small Kubernetes auto-remediation engine for development and
+staging clusters.
 
-Phase 1 is intentionally narrow: detect pods stuck in `CrashLoopBackOff` and restart them by deleting the pod so its controller can recreate it.
+The current MVP watches one namespace, detects pods stuck in
+`CrashLoopBackOff`, and deletes the failed pod so its controller can create a
+replacement.
 
-## Phase 1 Status
+> KubeRescue is not production-ready yet. Use it only in local, development, or
+> staging clusters until retry limits, cooldowns, policies, and audit logging
+> are implemented.
 
-KubeRescue is currently an early MVP and is not production-ready.
+## What It Does
 
-Current scope:
+- Watches pods in a Kubernetes namespace
+- Detects container states with reason `CrashLoopBackOff`
+- Deletes the failed pod
+- Lets Kubernetes recreate the pod through its Deployment, ReplicaSet, or other controller
 
-- Detect `CrashLoopBackOff` pod states
-- Continuously watch a single namespace using the Kubernetes Python client
-- Restart failed pods by deleting them through the Kubernetes API
-- Provide a small CLI entrypoint for local development and testing
+## What It Does Not Do Yet
 
-Not in Phase 1 yet:
+- Retry budgets
+- Cooldown windows
+- Policy-based remediation
+- Slack, webhook, or metrics output
+- Helm chart packaging
+- Production safety controls
 
-- Retry limits and cooldown windows
-- Policy-driven remediation rules
-- Slack or webhook notifications
-- Prometheus metrics
-- Rollback or scale actions
-- Helm chart or production deployment support
+## Quick Start
 
-Use this project only in development or staging clusters until safety controls are implemented.
-
-## Why This Project Exists
-
-Kubernetes failures such as `CrashLoopBackOff` often create noisy, repetitive operational work during development and testing. KubeRescue explores a safer path toward automated remediation, starting with one narrow and understandable recovery action.
-
-The long-term vision is:
-
-`Detection -> Classification -> Policy Evaluation -> Safe Remediation -> Observability`
-
-Phase 1 only delivers the first step of that journey for a single failure mode.
-
-## How Phase 1 Works
-
-```mermaid
-flowchart TD
-    A[Start KubeRescue CLI] --> B[Load Kubernetes client]
-    B --> C[List pods in namespace]
-    C --> D{CrashLoopBackOff detected?}
-    D -- No --> E[Sleep 10 seconds]
-    D -- Yes --> F[Delete pod]
-    F --> E
-    E --> C
-```
-
-## Current Architecture
-
-```mermaid
-flowchart LR
-    A[Namespace Pod Polling] --> B[CrashLoop Detector]
-    B --> C[Pod Restart Action]
-```
-
-## Installation
+Create a virtual environment and install the project:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .
-```
-
-If you want development tooling as well:
-
-```bash
 pip install -e ".[dev]"
 ```
 
-## Usage
-
-KubeRescue uses in-cluster Kubernetes configuration first and falls back to your local kubeconfig automatically.
-
-Run the Phase 1 monitor against a namespace:
+Run the unit tests:
 
 ```bash
-kubrescue --namespace default
+pytest -v
 ```
 
-When a pod enters `CrashLoopBackOff`, KubeRescue deletes that pod and lets its owning controller recreate it.
+Run KubeRescue against the default namespace:
 
-## Docker Desktop Kubernetes Test
+```bash
+kuberescue --namespace default
+```
 
-You can test the Phase 1 remediation loop locally with Docker Desktop Kubernetes.
-This creates an isolated namespace, starts a pod that intentionally enters
-`CrashLoopBackOff`, and runs KubeRescue against it.
+KubeRescue first tries in-cluster Kubernetes configuration. If that is not
+available, it falls back to your local kubeconfig.
+
+## Docker Image
+
+Build the local image:
+
+```bash
+docker build -t kuberescue:local .
+```
+
+The Docker build runs the test suite before producing the final runtime image.
+
+Check the CLI:
+
+```bash
+docker run --rm kuberescue:local --help
+```
+
+## Docker Desktop Kubernetes Demo
+
+This demo creates a safe, isolated namespace and a workload that intentionally
+enters `CrashLoopBackOff`.
 
 Prerequisites:
 
 - Docker Desktop is running
 - Kubernetes is enabled in Docker Desktop
 - `kubectl config current-context` returns `docker-desktop`
-- Project dependencies are installed with `pip install -e ".[dev]"`
+- The image `kuberescue:local` exists from the Docker build above
 
-Build the local KubeRescue image:
+Create the test namespace:
 
 ```bash
-docker build -t kubrescue:local .
+kubectl create namespace kuberescue-test
 ```
 
-The Docker build runs the test suite before producing the final image.
-
-Create a test namespace:
+Create the crashing demo workload:
 
 ```bash
-kubectl create namespace kubrescue-test
+kubectl apply -n kuberescue-test -f examples/crashloop-demo.yaml
 ```
 
-Create a deployment that uses the local image and exits immediately:
+Confirm the pod is in `CrashLoopBackOff`:
 
 ```bash
-kubectl create deployment crashloop-demo \
-  --namespace kubrescue-test \
-  --image=kubrescue:local \
-  -- python -c 'import sys; sys.exit(1)'
-```
-
-Confirm Kubernetes reports the pod as `CrashLoopBackOff`:
-
-```bash
-kubectl get pod -n kubrescue-test \
+kubectl get pod -n kuberescue-test \
   -o jsonpath='{range .items[*]}{.metadata.name}{" reason="}{.status.containerStatuses[0].state.waiting.reason}{" restarts="}{.status.containerStatuses[0].restartCount}{"\n"}{end}'
 ```
 
-Run KubeRescue against the test namespace:
+Run KubeRescue:
 
 ```bash
-kubrescue --namespace kubrescue-test
+kuberescue --namespace kuberescue-test
 ```
 
-Expected behavior:
-
-- KubeRescue logs that it is monitoring `kubrescue-test`
-- KubeRescue detects the `CrashLoopBackOff` pod
-- KubeRescue deletes the failed pod
-- The deployment creates a replacement pod with a new name
-
-In another terminal, verify the replacement pod:
+In another terminal, watch the pod get replaced:
 
 ```bash
-kubectl get pods -n kubrescue-test
+kubectl get pods -n kuberescue-test
 ```
 
-Clean up when finished:
+Clean up:
 
 ```bash
-kubectl delete namespace kubrescue-test
+kubectl delete namespace kuberescue-test
 ```
 
-## Safety Notes
+## Kubernetes Manifests
 
-Current behavior is intentionally simple, which also means it has important limitations:
+Example manifests live in `deploy/kubernetes`.
 
-- There is no retry budget
-- There is no cooldown protection
-- There is no remediation policy layer
-- There is no notification or audit sink beyond console output
+Apply the basic resources:
 
-Because of that, this repository should be treated as an MVP for experimentation, not an unattended production controller.
+```bash
+kubectl apply -f deploy/kubernetes/namespace.yaml
+kubectl apply -f deploy/kubernetes/rbac.yaml
+kubectl apply -f deploy/kubernetes/deployment.yaml
+```
 
-## Developer Tooling
+The deployment manifest is intentionally simple and points at `kuberescue:local`.
+Update the image and namespace arguments before using it outside local testing.
 
-The repository already includes basic quality gates:
+## Project Structure
 
-- `pytest` for tests
-- `mypy` for type checking
-- `ruff` and `flake8` for linting
-- `black` for formatting
-- `bandit` for security scanning
-- GitHub Actions CI for automated checks
+```text
+.
+├── deploy/kubernetes/     Kubernetes manifests
+├── docs/                  Maintainer documentation
+├── examples/              Demo workloads
+├── kuberescue/             Python package source
+├── tests/                 Unit tests
+├── Dockerfile             Container build
+├── pyproject.toml         Package and tool configuration
+└── README.md              Quick start and user guide
+```
+
+## Development
+
+Run the full local check set:
+
+```bash
+black --check .
+ruff check .
+flake8 .
+mypy kuberescue
+bandit -r kuberescue
+pytest -v
+```
+
+More details are in `docs/development.md`.
 
 ## Roadmap
 
-Planned next steps after Phase 1:
-
 1. Add retry limits and cooldown windows
 2. Replace polling with Kubernetes watch streams
-3. Introduce policy-based remediation configuration
-4. Add notifications and observability
-5. Package the project for cluster deployment
+3. Add policy-based remediation rules
+4. Add notifications and metrics
+5. Package the project for safer cluster deployment
 
 ## Contributing
 
-This project is still evolving quickly. If you want to contribute, the most helpful areas right now are:
+Contributions are welcome. Please read `CONTRIBUTING.md` before opening a pull
+request.
 
-- Safer remediation controls
-- Better failure classification
-- Local demo environments and examples
-- Tests around watcher and remediation behavior
+## License
 
-## Vision
-
-KubeRescue aims to become a safe and policy-aware remediation engine for Kubernetes operators. The path to that goal is to earn trust one small, verifiable feature at a time.
+KubeRescue is licensed under the MIT License. See `LICENSE` for details.

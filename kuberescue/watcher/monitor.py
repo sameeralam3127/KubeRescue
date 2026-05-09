@@ -1,7 +1,7 @@
 import time
 from typing import Any
-from kubrescue.config.k8s_client import load_kubernetes_client
-from kubrescue.remediator.actions import restart_pod
+from kuberescue.config.k8s_client import load_kubernetes_client
+from kuberescue.remediator.actions import restart_pod
 
 
 def detect_crashloop(pod: Any) -> bool:

@@ -1,6 +1,6 @@
 from typing import Any
 from unittest.mock import MagicMock
-from kubrescue.watcher.monitor import detect_crashloop
+from kuberescue.watcher.monitor import detect_crashloop
 
 
 def create_mock_pod(reason: str | None) -> Any:

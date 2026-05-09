@@ -1,5 +1,5 @@
 import typer
-from kubrescue.watcher.monitor import monitor_namespace
+from kuberescue.watcher.monitor import monitor_namespace
 
 app = typer.Typer(help="KubeRescue - Kubernetes Auto Remediation Engine")
 
