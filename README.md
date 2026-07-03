@@ -1,31 +1,23 @@
 # KubeRescue
 
-KubeRescue is a small Kubernetes auto-remediation engine for development and
-staging clusters.
-
-The current MVP watches one namespace, detects pods stuck in
-`CrashLoopBackOff`, and deletes the failed pod so its controller can create a
-replacement.
+KubeRescue is a lightweight Kubernetes auto-remediation tool for development
+and staging clusters. It watches pods for `CrashLoopBackOff`, reports useful
+diagnostic context, and can delete failed pods so Kubernetes recreates them
+through their controller.
 
 > KubeRescue is not production-ready yet. Use it only in local, development, or
-> staging clusters until retry limits, cooldowns, policies, and audit logging
-> are implemented.
+> staging clusters until cooldowns, retry budgets, policy controls, and audit
+> logging are implemented.
 
-## What It Does
+## Why Use It
 
-- Watches pods in a Kubernetes namespace
-- Detects container states with reason `CrashLoopBackOff`
-- Deletes the failed pod
-- Lets Kubernetes recreate the pod through its Deployment, ReplicaSet, or other controller
-
-## What It Does Not Do Yet
-
-- Retry budgets
-- Cooldown windows
-- Policy-based remediation
-- Slack, webhook, or metrics output
-- Helm chart packaging
-- Production safety controls
+- Find pods stuck in `CrashLoopBackOff`
+- See the failing pod, container, restart count, last termination reason, and
+  last exit code
+- Preview actions with `--dry-run` before deleting anything
+- Target workloads by namespace and label selector
+- Run once for scripts or continuously as a small remediation loop
+- Emit JSON for automation and CI checks
 
 ## Quick Start
 
@@ -37,19 +29,19 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
-Run the unit tests:
+Check the CLI:
 
 ```bash
-pytest -v
+kuberescue --help
 ```
 
-Preview what KubeRescue would remediate in the default namespace:
+Safely preview CrashLoopBackOff pods in the default namespace:
 
 ```bash
 kuberescue --namespace default --once --dry-run
 ```
 
-Run KubeRescue continuously:
+Run continuous remediation with a per-scan restart limit:
 
 ```bash
 kuberescue --namespace default --interval 10 --max-restarts 3
@@ -58,20 +50,19 @@ kuberescue --namespace default --interval 10 --max-restarts 3
 KubeRescue first tries in-cluster Kubernetes configuration. If that is not
 available, it falls back to your local kubeconfig.
 
-Each scan reports the crashing pod, container name, restart count, last
-termination reason, and last exit code. Those fields make it easier to decide
-whether the pod should be restarted or whether the workload needs a code,
-configuration, resource, or probe fix.
+## Common Commands
 
-Useful CLI options:
+Scan a namespace once:
 
-- `--namespace`, `-n`: namespace to scan
-- `--dry-run`: print matching pods without deleting them
-- `--once`: scan once and exit, useful for checks and scheduled jobs
-- `--interval`, `-i`: seconds between scans during continuous monitoring
-- `--max-restarts`: maximum pods to delete per scan
-- `--selector`, `-l`: scan only pods that match a Kubernetes label selector
-- `--output`, `-o`: print human-readable text or machine-readable JSON
+```bash
+kuberescue --namespace default --once
+```
+
+Preview without deleting pods:
+
+```bash
+kuberescue --namespace default --once --dry-run
+```
 
 Target a workload by label:
 
@@ -79,11 +70,70 @@ Target a workload by label:
 kuberescue --namespace default --selector app=api --once --dry-run
 ```
 
+Run continuously every 5 seconds:
+
+```bash
+kuberescue --namespace default --interval 5 --max-restarts 1
+```
+
 Generate JSON for automation:
 
 ```bash
 kuberescue --namespace default --once --dry-run --output json
 ```
+
+Example JSON shape:
+
+```json
+{
+  "detected": 1,
+  "findings": [
+    {
+      "container": "api",
+      "last_exit_code": 137,
+      "last_terminated_reason": "OOMKilled",
+      "namespace": "default",
+      "pod": "api-7c8f9f6d9b-x2q4m",
+      "restart_count": 7,
+      "waiting_reason": "CrashLoopBackOff"
+    }
+  ],
+  "namespace": "default",
+  "remediated": 1,
+  "selector": null
+}
+```
+
+## CLI Options
+
+| Option | Description |
+| --- | --- |
+| `--namespace`, `-n` | Kubernetes namespace to scan. Defaults to `default`. |
+| `--selector`, `-l` | Kubernetes label selector, such as `app=api`. |
+| `--dry-run` | Report matching pods without deleting them. |
+| `--once` | Run one scan and exit. Useful for scripts and scheduled jobs. |
+| `--interval`, `-i` | Seconds between scans during continuous monitoring. |
+| `--max-restarts` | Maximum pods to delete per scan. |
+| `--output`, `-o` | Output format: `text` or `json`. |
+
+## What It Does
+
+KubeRescue scans pod container statuses for the waiting reason
+`CrashLoopBackOff`. For each matching pod, it prints diagnostic details and,
+unless `--dry-run` is set, deletes the pod. Kubernetes then recreates the pod
+through the owning Deployment, ReplicaSet, StatefulSet, or other controller.
+
+The diagnostic output is meant to help decide whether restarting is useful or
+whether the workload needs a code, configuration, resource, image, or probe fix.
+
+## What It Does Not Do Yet
+
+- Cooldown windows
+- Retry budgets across multiple scans
+- Policy-based remediation rules
+- Slack, webhook, or metrics output
+- Helm chart packaging
+- Production safety controls
 
 ## Docker Image
 
@@ -168,24 +218,17 @@ kubectl apply -f deploy/kubernetes/rbac.yaml
 kubectl apply -f deploy/kubernetes/deployment.yaml
 ```
 
-The deployment manifest is intentionally simple and points at `kuberescue:local`.
-Update the image and namespace arguments before using it outside local testing.
-
-## Project Structure
-
-```text
-.
-├── deploy/kubernetes/     Kubernetes manifests
-├── docs/                  Maintainer documentation
-├── examples/              Demo workloads
-├── kuberescue/             Python package source
-├── tests/                 Unit tests
-├── Dockerfile             Container build
-├── pyproject.toml         Package and tool configuration
-└── README.md              Quick start and user guide
-```
+The deployment manifest points at `kuberescue:local` and scans the `default`
+namespace. Update the image, namespace, label selector, interval, and restart
+limit before using it outside local testing.
 
 ## Development
+
+Run the unit tests:
+
+```bash
+pytest -v
+```
 
 Run the full local check set:
 
@@ -200,9 +243,23 @@ pytest -v
 
 More details are in `docs/development.md`.
 
+## Project Structure
+
+```text
+.
+├── deploy/kubernetes/     Kubernetes manifests
+├── docs/                  Maintainer documentation
+├── examples/              Demo workloads
+├── kuberescue/             Python package source
+├── tests/                 Unit tests
+├── Dockerfile             Container build
+├── pyproject.toml         Package and tool configuration
+└── README.md              User-facing quick start
+```
+
 ## Roadmap
 
-1. Add retry limits and cooldown windows
+1. Add cooldown windows and retry budgets
 2. Replace polling with Kubernetes watch streams
 3. Add policy-based remediation rules
 4. Add notifications and metrics
