@@ -25,3 +25,7 @@ spec:
           args:
             - --namespace
             - default
+            - --interval
+            - "10"
+            - --max-restarts
+            - "3"

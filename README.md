@@ -43,14 +43,28 @@ Run the unit tests:
 pytest -v
 ```
 
-Run KubeRescue against the default namespace:
+Preview what KubeRescue would remediate in the default namespace:
 
 ```bash
-kuberescue --namespace default
+kuberescue --namespace default --once --dry-run
+```
+
+Run KubeRescue continuously:
+
+```bash
+kuberescue --namespace default --interval 10 --max-restarts 3
 ```
 
 KubeRescue first tries in-cluster Kubernetes configuration. If that is not
 available, it falls back to your local kubeconfig.
+
+Useful CLI options:
+
+- `--namespace`, `-n`: namespace to scan
+- `--dry-run`: print matching pods without deleting them
+- `--once`: scan once and exit, useful for checks and scheduled jobs
+- `--interval`, `-i`: seconds between scans during continuous monitoring
+- `--max-restarts`: maximum pods to delete per scan
 
 ## Docker Image
 
@@ -99,10 +113,16 @@ kubectl get pod -n kuberescue-test \
   -o jsonpath='{range .items[*]}{.metadata.name}{" reason="}{.status.containerStatuses[0].state.waiting.reason}{" restarts="}{.status.containerStatuses[0].restartCount}{"\n"}{end}'
 ```
 
-Run KubeRescue:
+Preview the remediation:
 
 ```bash
-kuberescue --namespace kuberescue-test
+kuberescue --namespace kuberescue-test --once --dry-run
+```
+
+Run KubeRescue with a restart limit:
+
+```bash
+kuberescue --namespace kuberescue-test --interval 5 --max-restarts 1
 ```
 
 In another terminal, watch the pod get replaced:
