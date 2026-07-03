@@ -58,6 +58,11 @@ kuberescue --namespace default --interval 10 --max-restarts 3
 KubeRescue first tries in-cluster Kubernetes configuration. If that is not
 available, it falls back to your local kubeconfig.
 
+Each scan reports the crashing pod, container name, restart count, last
+termination reason, and last exit code. Those fields make it easier to decide
+whether the pod should be restarted or whether the workload needs a code,
+configuration, resource, or probe fix.
+
 Useful CLI options:
 
 - `--namespace`, `-n`: namespace to scan
@@ -65,6 +70,20 @@ Useful CLI options:
 - `--once`: scan once and exit, useful for checks and scheduled jobs
 - `--interval`, `-i`: seconds between scans during continuous monitoring
 - `--max-restarts`: maximum pods to delete per scan
+- `--selector`, `-l`: scan only pods that match a Kubernetes label selector
+- `--output`, `-o`: print human-readable text or machine-readable JSON
+
+Target a workload by label:
+
+```bash
+kuberescue --namespace default --selector app=api --once --dry-run
+```
+
+Generate JSON for automation:
+
+```bash
+kuberescue --namespace default --once --dry-run --output json
+```
 
 ## Docker Image
 

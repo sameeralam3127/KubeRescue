@@ -3,6 +3,7 @@ from typing import Annotated
 from kuberescue.watcher.monitor import monitor_namespace
 
 app = typer.Typer(help="KubeRescue - Kubernetes Auto Remediation Engine")
+OUTPUT_FORMATS = {"text", "json"}
 
 
 @app.command()
@@ -46,16 +47,38 @@ def monitor(
             help="Maximum pods to restart per scan.",
         ),
     ] = None,
+    selector: Annotated[
+        str | None,
+        typer.Option(
+            "--selector",
+            "-l",
+            help="Kubernetes label selector, for example app=api.",
+        ),
+    ] = None,
+    output: Annotated[
+        str,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Output format: text or json.",
+        ),
+    ] = "text",
 ) -> None:
     """
     Monitor a namespace for failing pods and remediate.
     """
+    if output not in OUTPUT_FORMATS:
+        allowed = ", ".join(sorted(OUTPUT_FORMATS))
+        raise typer.BadParameter(f"output must be one of: {allowed}")
+
     monitor_namespace(
         namespace,
         interval_seconds=interval,
         once=once,
         dry_run=dry_run,
         max_restarts=max_restarts,
+        selector=selector,
+        output=output,
     )
 
 
