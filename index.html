@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛟</text></svg>">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234f8cff' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M4.9 4.9l4.3 4.3m5.6 0l4.3-4.3M4.9 19.1l4.3-4.3m5.6 0l4.3 4.3'/%3E%3C/svg%3E">
 <style>
 /* ============ Reset & tokens ============ */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -75,12 +75,13 @@ nav.hidden-nav{transform:translateY(-100%)}
 .nav-inner{width:min(1180px,92%);margin:auto;display:flex;align-items:center;justify-content:space-between}
 .brand{display:flex;align-items:center;gap:.65rem;font-weight:800;font-size:1.2rem;letter-spacing:-.02em}
 .brand .logo{
-  width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-size:1.05rem;
+  width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:#fff;
   background:linear-gradient(135deg,#2563eb,#0ea5a0);
   box-shadow:0 6px 20px rgba(37,99,235,.45);
   animation:bob 5s ease-in-out infinite;
 }
 @keyframes bob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(-6deg)}}
+.brand .logo svg{width:58%;height:58%}
 .brand em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
 .badge{
   font-size:.62rem;font-weight:800;letter-spacing:.08em;padding:.22rem .55rem;border-radius:999px;
@@ -226,9 +227,10 @@ h1{font-size:clamp(2.5rem,5.6vw,4.2rem);font-weight:900;letter-spacing:-.04em;li
 .card:hover{transform:translateY(-5px);border-color:rgba(79,140,255,.35)}
 .card:hover::before{opacity:1}
 .card .ico{
-  width:50px;height:50px;border-radius:13px;display:grid;place-items:center;margin-bottom:1.2rem;font-size:1.35rem;
+  width:50px;height:50px;border-radius:13px;display:grid;place-items:center;margin-bottom:1.2rem;color:#7fb0ff;
   background:rgba(79,140,255,.12);border:1px solid rgba(79,140,255,.2);
 }
+.card .ico svg{width:24px;height:24px}
 .card h3{font-size:1.2rem;font-weight:800;margin-bottom:.55rem;letter-spacing:-.01em}
 .card p{color:var(--muted);font-size:.95rem}
 .card code{font-size:.78rem;padding:.14rem .42rem;border-radius:6px;background:rgba(52,211,153,.1);color:var(--green)}
@@ -241,7 +243,8 @@ h1{font-size:clamp(2.5rem,5.6vw,4.2rem);font-weight:900;letter-spacing:-.04em;li
   background:var(--surface);border:1px solid var(--line);position:relative;transition:.3s;
 }
 .pipe-step.active{border-color:rgba(34,211,238,.5);box-shadow:0 0 34px rgba(34,211,238,.15);transform:translateY(-6px)}
-.pipe-step .em{font-size:1.6rem;margin-bottom:.5rem}
+.pipe-step .em{display:flex;justify-content:center;margin-bottom:.7rem;color:var(--cyan)}
+.pipe-step .em svg{width:26px;height:26px}
 .pipe-step h4{font-size:.95rem;font-weight:800}
 .pipe-step p{font-size:.78rem;color:var(--muted);margin-top:.3rem}
 .pipe-arrow{align-self:center;color:#3d4763;font-size:1.2rem;user-select:none}
@@ -347,7 +350,7 @@ footer{border-top:1px solid var(--line);padding:3rem 0;background:rgba(148,163,2
 <nav id="nav">
   <div class="nav-inner">
     <a class="brand" href="#top">
-      <span class="logo">🛟</span>
+      <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="M4.9 4.9l4.3 4.3m5.6 0l4.3-4.3M4.9 19.1l4.3-4.3m5.6 0l4.3 4.3"/></svg></span>
       Kube<em>Rescue</em>
       <span class="badge">PRE-1.0</span>
     </a>
@@ -407,15 +410,15 @@ footer{border-top:1px solid var(--line);padding:3rem 0;background:rgba(148,163,2
 <!-- ============ MARQUEE ============ -->
 <div class="marquee" aria-hidden="true">
   <div class="marquee-track" id="marquee-track">
-    <span>⚡ <b>Single Go binary</b></span>
-    <span>🔍 <b>Evidence-rich detection</b></span>
-    <span>🛡️ <b>Bare pods never deleted</b></span>
-    <span>🧪 <b>--dry-run first-class</b></span>
-    <span>📉 <b>--max-restarts budgets</b></span>
-    <span>📦 <b>Versioned JSON reports</b></span>
-    <span>🚦 <b>CI-friendly exit codes</b></span>
-    <span>☸️ <b>In-cluster or kubeconfig</b></span>
-    <span>🔓 <b>MIT licensed</b></span>
+    <span><b>Single Go binary</b></span>
+    <span><b>Evidence-rich detection</b></span>
+    <span><b>Bare pods never deleted</b></span>
+    <span><b>--dry-run first-class</b></span>
+    <span><b>--max-restarts budgets</b></span>
+    <span><b>Versioned JSON reports</b></span>
+    <span><b>CI-friendly exit codes</b></span>
+    <span><b>In-cluster or kubeconfig</b></span>
+    <span><b>MIT licensed</b></span>
   </div>
 </div>
 
@@ -439,22 +442,22 @@ footer{border-top:1px solid var(--line);padding:3rem 0;background:rgba(148,163,2
     </div>
     <div class="grid-2">
       <div class="card reveal">
-        <div class="ico">👁️</div>
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></div>
         <h3>Watches Pods</h3>
         <p>Monitors pods in a namespace (optionally filtered by label selector), once or on an interval — in-cluster or via your local kubeconfig.</p>
       </div>
       <div class="card reveal" style="transition-delay:.07s">
-        <div class="ico">🔬</div>
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M11 8v3l2 2"/></svg></div>
         <h3>Detects With Evidence</h3>
         <p>Finds containers stuck in <code class="bad">CrashLoopBackOff</code> and records why: restart count, last exit code, termination reason, and owning controller.</p>
       </div>
       <div class="card reveal" style="transition-delay:.14s">
-        <div class="ico">🛡️</div>
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/></svg></div>
         <h3>Restarts Safely</h3>
         <p>Restarts only controller-managed pods — bare pods are never deleted. <code>--dry-run</code> previews everything and <code>--max-restarts</code> caps actions per scan.</p>
       </div>
       <div class="card reveal" style="transition-delay:.21s">
-        <div class="ico">📊</div>
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div>
         <h3>Reports Truthfully</h3>
         <p>Versioned JSON reports on stdout, structured logs on stderr, CI-friendly exit codes — and a dry run is never counted as a remediation.</p>
       </div>
@@ -471,15 +474,15 @@ footer{border-top:1px solid var(--line);padding:3rem 0;background:rgba(148,163,2
       <p class="lead" style="margin:0 auto">Every scan runs the same honest loop — watch the steps light up.</p>
     </div>
     <div class="pipeline reveal" id="pipeline">
-      <div class="pipe-step"><div class="em">👁️</div><h4>Scan</h4><p>List pods in the namespace</p></div>
+      <div class="pipe-step"><div class="em"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></div><h4>Scan</h4><p>List pods in the namespace</p></div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-step"><div class="em">🔬</div><h4>Detect</h4><p>Pure functions over pod state</p></div>
+      <div class="pipe-step"><div class="em"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div><h4>Detect</h4><p>Pure functions over pod state</p></div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-step"><div class="em">🧾</div><h4>Evidence</h4><p>Exit code, reason, owner</p></div>
+      <div class="pipe-step"><div class="em"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></div><h4>Evidence</h4><p>Exit code, reason, owner</p></div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-step"><div class="em">🛡️</div><h4>Safe Action</h4><p>Budgeted, controller-only</p></div>
+      <div class="pipe-step"><div class="em"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/></svg></div><h4>Safe Action</h4><p>Budgeted, controller-only</p></div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-step"><div class="em">📊</div><h4>Report</h4><p>Truthful, versioned JSON</p></div>
+      <div class="pipe-step"><div class="em"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div><h4>Report</h4><p>Truthful, versioned JSON</p></div>
     </div>
   </div>
 </section>
@@ -495,14 +498,14 @@ footer{border-top:1px solid var(--line);padding:3rem 0;background:rgba(148,163,2
 
     <div class="qs-wrap reveal">
       <div class="tabs" role="tablist">
-        <button class="tab active" data-panel="p-source">🛠️ From Source</button>
-        <button class="tab" data-panel="p-docker">🐳 Docker</button>
-        <button class="tab" data-panel="p-demo">🧪 Cluster Demo</button>
+        <button class="tab active" data-panel="p-source">From Source</button>
+        <button class="tab" data-panel="p-docker">Docker</button>
+        <button class="tab" data-panel="p-demo">Cluster Demo</button>
       </div>
 
       <div class="panel active" id="p-source">
         <div class="codebox">
-          <div class="cb-head"><span>terminal</span><button class="copy">📋 Copy</button></div>
+          <div class="cb-head"><span>terminal</span><button class="copy">Copy</button></div>
           <pre><code><span class="cmt"># Clone and build</span>
 <span class="cmd">git</span> clone https://github.com/sameeralam3127/KubeRescue.git
 <span class="cmd">cd</span> KubeRescue
@@ -513,25 +516,25 @@ footer{border-top:1px solid var(--line);padding:3rem 0;background:rgba(148,163,2
 
 <span class="cmt"># Monitor continuously, at most 3 restarts per scan</span>
 <span class="cmd">bin/kuberescue</span> monitor -n default --interval 30s --max-restarts 3</code></pre>
-          <p class="note">💡 Tries in-cluster config first, falls back to local kubeconfig (<code>--kubeconfig</code>, <code>--context</code>). Add <code>-o json</code> for automation — exit code 2 signals findings.</p>
+          <p class="note">Tries in-cluster config first, falls back to local kubeconfig (<code>--kubeconfig</code>, <code>--context</code>). Add <code>-o json</code> for automation — exit code 2 signals findings.</p>
         </div>
       </div>
 
       <div class="panel" id="p-docker">
         <div class="codebox">
-          <div class="cb-head"><span>terminal</span><button class="copy">📋 Copy</button></div>
+          <div class="cb-head"><span>terminal</span><button class="copy">Copy</button></div>
           <pre><code><span class="cmt"># Build the non-root distroless image</span>
 <span class="cmd">make</span> docker
 
 <span class="cmt"># Check the CLI</span>
 <span class="cmd">docker</span> run --rm kuberescue:local --help</code></pre>
-          <p class="note">💡 A single static Go binary inside a distroless base — small, fast, non-root.</p>
+          <p class="note">A single static Go binary inside a distroless base — small, fast, non-root.</p>
         </div>
       </div>
 
       <div class="panel" id="p-demo">
         <div class="codebox">
-          <div class="cb-head"><span>terminal</span><button class="copy">📋 Copy</button></div>
+          <div class="cb-head"><span>terminal</span><button class="copy">Copy</button></div>
           <pre><code><span class="cmt"># Create an intentional CrashLoopBackOff</span>
 <span class="cmd">kubectl</span> create namespace kuberescue-test
 <span class="cmd">kubectl</span> apply -n kuberescue-test -f examples/crashloop-demo.yaml
@@ -542,7 +545,7 @@ footer{border-top:1px solid var(--line);padding:3rem 0;background:rgba(148,163,2
 
 <span class="cmt"># Clean up</span>
 <span class="cmd">kubectl</span> delete namespace kuberescue-test</code></pre>
-          <p class="note">💡 Works great with Docker Desktop's built-in Kubernetes (<code>docker-desktop</code> context).</p>
+          <p class="note">Works great with Docker Desktop's built-in Kubernetes (<code>docker-desktop</code> context).</p>
         </div>
       </div>
     </div>
@@ -608,7 +611,7 @@ footer{border-top:1px solid var(--line);padding:3rem 0;background:rgba(148,163,2
           <svg viewBox="0 0 24 24" fill="currentColor" width="18"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.93c.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.54-3.87-1.54-.53-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.75 2.69 1.25 3.34.95.1-.74.4-1.25.72-1.54-2.55-.29-5.23-1.28-5.23-5.68 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.16 1.18a11 11 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.62 1.59.23 2.76.11 3.05.74.81 1.18 1.84 1.18 3.1 0 4.41-2.69 5.38-5.25 5.67.41.35.77 1.05.77 2.12v3.15c0 .31.2.67.8.55A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5z"/></svg>
           Star on GitHub
         </a>
-        <a class="btn btn-ghost" href="#quickstart">⌨️ Quick Start</a>
+        <a class="btn btn-ghost" href="#quickstart">Quick Start</a>
       </div>
     </div>
   </div>
@@ -617,7 +620,7 @@ footer{border-top:1px solid var(--line);padding:3rem 0;background:rgba(148,163,2
 <!-- ============ FOOTER ============ -->
 <footer>
   <div class="wrap foot">
-    <a class="brand" href="#top"><span class="logo" style="width:30px;height:30px;font-size:.9rem">🛟</span> Kube<em>Rescue</em></a>
+    <a class="brand" href="#top"><span class="logo" style="width:30px;height:30px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="M4.9 4.9l4.3 4.3m5.6 0l4.3-4.3M4.9 19.1l4.3-4.3m5.6 0l4.3 4.3"/></svg></span> Kube<em>Rescue</em></a>
     <div class="links">
       <a href="https://github.com/sameeralam3127/KubeRescue/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a>
       <a href="https://github.com/sameeralam3127/KubeRescue" target="_blank" rel="noopener noreferrer">GitHub</a>
@@ -709,10 +712,10 @@ document.querySelectorAll(".copy").forEach(btn => {
     const pre = btn.closest(".codebox").querySelector("pre");
     try {
       await navigator.clipboard.writeText(pre.innerText);
-      btn.textContent = "✅ Copied!";
+      btn.textContent = "Copied!";
       btn.classList.add("done");
-      setTimeout(() => { btn.textContent = "📋 Copy"; btn.classList.remove("done"); }, 1800);
-    } catch { btn.textContent = "⚠️ Failed"; }
+      setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("done"); }, 1800);
+    } catch { btn.textContent = "Failed"; }
   });
 });
 
