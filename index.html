@@ -1,628 +1,822 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KubeRescue - Kubernetes Auto-Remediation Engine</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        'sans': ['Inter', 'system-ui', 'sans-serif'],
-                        'mono': ['JetBrains Mono', 'monospace'],
-                    },
-                    colors: {
-                        'kube': {
-                            50: '#eff6ff',
-                            100: '#dbeafe',
-                            200: '#bfdbfe',
-                            300: '#93c5fd',
-                            400: '#60a5fa',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                            700: '#1d4ed8',
-                            800: '#1e40af',
-                            900: '#1e3a8a',
-                            950: '#0f1f4d',
-                        },
-                        'dark': {
-                            50: '#f8fafc',
-                            100: '#f1f5f9',
-                            200: '#e2e8f0',
-                            300: '#cbd5e1',
-                            400: '#94a3b8',
-                            500: '#64748b',
-                            600: '#475569',
-                            700: '#334155',
-                            800: '#1e293b',
-                            900: '#0f172a',
-                            950: '#020617',
-                        },
-                        'accent': {
-                            400: '#34d399',
-                            500: '#10b981',
-                            600: '#059669',
-                        },
-                        'warning': {
-                            400: '#fbbf24',
-                            500: '#f59e0b',
-                            600: '#d97706',
-                        },
-                        'danger': {
-                            400: '#f87171',
-                            500: '#ef4444',
-                            600: '#dc2626',
-                        },
-                    },
-                },
-            },
-        }
-    </script>
-    <style>
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
-        }
-        @keyframes pulse-slow {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        @keyframes slide-up {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes gradient-shift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-        .animate-float { animation: float 6s ease-in-out infinite; }
-        .animate-pulse-slow { animation: pulse-slow 3s ease-in-out infinite; }
-        .animate-slide-up { animation: slide-up 0.8s ease-out forwards; }
-        .gradient-animated {
-            background: linear-gradient(270deg, #3b82f6, #10b981, #8b5cf6, #3b82f6);
-            background-size: 300% 300%;
-            animation: gradient-shift 8s ease infinite;
-        }
-        .glass-bg {
-            background: rgba(15, 23, 42, 0.7);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-        .glass-card {
-            background: rgba(30, 41, 59, 0.6);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .glass-card:hover {
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            transform: translateY(-4px);
-            box-shadow: 0 20px 60px -12px rgba(0, 0, 0, 0.5);
-        }
-        .code-block {
-            background: rgba(2, 6, 23, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-        }
-        .code-block pre {
-            overflow-x: auto;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(255,255,255,0.2) transparent;
-        }
-        .code-block pre::-webkit-scrollbar {
-            height: 6px;
-        }
-        .code-block pre::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .code-block pre::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.2);
-            border-radius: 3px;
-        }
-        .dot-pattern {
-            background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
-            background-size: 30px 30px;
-        }
-        .grid-lines {
-            background-image:
-                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-            background-size: 60px 60px;
-        }
-        .terminal-line::before {
-            content: '$ ';
-            color: #10b981;
-            font-weight: 600;
-        }
-        html {
-            scroll-behavior: smooth;
-        }
-        .highlight-glow {
-            box-shadow: 0 0 40px rgba(59, 130, 246, 0.15);
-        }
-        .badge-beta {
-            background: linear-gradient(135deg, #f59e0b, #ef4444);
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KubeRescue — Kubernetes Auto-Remediation Engine</title>
+<meta name="description" content="KubeRescue is a safety-first Kubernetes remediation engine written in Go. It detects CrashLoopBackOff with full evidence and takes safe, bounded, truthful actions.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛟</text></svg>">
+<style>
+/* ============ Reset & tokens ============ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#04070f;
+  --bg-soft:#0a0f1e;
+  --surface:rgba(148,163,255,.05);
+  --line:rgba(148,163,255,.14);
+  --text:#e8ecf8;
+  --muted:#8b94ad;
+  --faint:#5b6479;
+  --blue:#4f8cff;
+  --cyan:#22d3ee;
+  --green:#34d399;
+  --amber:#fbbf24;
+  --red:#f87171;
+  --violet:#a78bfa;
+  --grad:linear-gradient(100deg,#4f8cff,#22d3ee 45%,#34d399);
+  --radius:18px;
+  --nav-h:68px;
+  --font:'Inter',system-ui,-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+html{scroll-behavior:smooth;scroll-padding-top:calc(var(--nav-h) + 16px)}
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.6;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:rgba(79,140,255,.35)}
+a{color:inherit;text-decoration:none}
+img,svg,canvas{display:block;max-width:100%}
+code,pre,kbd{font-family:var(--mono)}
+
+/* ============ Scroll progress ============ */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:var(--grad);z-index:100;box-shadow:0 0 12px rgba(34,211,238,.7)}
+
+/* ============ Backdrop ============ */
+#bg-canvas{position:fixed;inset:0;z-index:-2;opacity:.7}
+.aurora{position:fixed;inset:0;z-index:-3;overflow:hidden;pointer-events:none}
+.aurora::before,.aurora::after{
+  content:"";position:absolute;width:60vmax;height:60vmax;border-radius:50%;
+  filter:blur(90px);opacity:.16;animation:drift 26s ease-in-out infinite alternate;
+}
+.aurora::before{background:#2447ff;top:-25vmax;left:-15vmax}
+.aurora::after{background:#0e7c66;bottom:-30vmax;right:-15vmax;animation-delay:-13s}
+@keyframes drift{
+  0%{transform:translate(0,0) scale(1)}
+  100%{transform:translate(9vmax,6vmax) scale(1.25)}
+}
+
+/* ============ Nav ============ */
+nav{
+  position:fixed;top:0;left:0;right:0;height:var(--nav-h);z-index:90;
+  display:flex;align-items:center;
+  background:rgba(4,7,15,.65);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border-bottom:1px solid var(--line);
+  transition:transform .35s ease;
+}
+nav.hidden-nav{transform:translateY(-100%)}
+.nav-inner{width:min(1180px,92%);margin:auto;display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:.65rem;font-weight:800;font-size:1.2rem;letter-spacing:-.02em}
+.brand .logo{
+  width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-size:1.05rem;
+  background:linear-gradient(135deg,#2563eb,#0ea5a0);
+  box-shadow:0 6px 20px rgba(37,99,235,.45);
+  animation:bob 5s ease-in-out infinite;
+}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(-6deg)}}
+.brand em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.badge{
+  font-size:.62rem;font-weight:800;letter-spacing:.08em;padding:.22rem .55rem;border-radius:999px;
+  background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;
+}
+.nav-links{display:flex;align-items:center;gap:1.6rem;font-size:.9rem;font-weight:600;color:var(--muted)}
+.nav-links a{position:relative;transition:color .2s}
+.nav-links a:hover{color:#fff}
+.nav-links a:not(.gh)::after{
+  content:"";position:absolute;left:0;bottom:-6px;height:2px;width:0;background:var(--grad);transition:width .25s;border-radius:2px;
+}
+.nav-links a:not(.gh):hover::after{width:100%}
+.gh{
+  display:flex;align-items:center;gap:.5rem;padding:.5rem 1rem;border-radius:10px;color:#fff;
+  border:1px solid var(--line);background:var(--surface);transition:.2s;
+}
+.gh:hover{border-color:rgba(148,163,255,.4);background:rgba(148,163,255,.1);transform:translateY(-1px)}
+#burger{display:none;background:none;border:0;color:#fff;cursor:pointer;padding:.4rem}
+#mobile-menu{
+  display:none;position:fixed;top:var(--nav-h);left:0;right:0;z-index:89;
+  background:rgba(4,7,15,.95);backdrop-filter:blur(18px);border-bottom:1px solid var(--line);
+  padding:1rem 5%;flex-direction:column;gap:.4rem;
+}
+#mobile-menu a{padding:.7rem .4rem;font-weight:600;color:var(--muted);border-radius:8px}
+#mobile-menu a:hover{color:#fff;background:var(--surface)}
+#mobile-menu.open{display:flex}
+@media(max-width:820px){.nav-links{display:none}#burger{display:block}}
+
+/* ============ Layout helpers ============ */
+.wrap{width:min(1180px,92%);margin:0 auto}
+section{padding:6.5rem 0;position:relative}
+.kicker{
+  display:inline-flex;align-items:center;gap:.5rem;font-size:.78rem;font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--cyan);margin-bottom:1rem;
+}
+.kicker::before{content:"";width:26px;height:2px;background:var(--grad);border-radius:2px}
+h2{font-size:clamp(1.8rem,4vw,2.7rem);font-weight:800;letter-spacing:-.03em;line-height:1.15;margin-bottom:.9rem}
+.lead{color:var(--muted);font-size:1.05rem;max-width:620px}
+.center{text-align:center}
+.center .lead,.center .kicker{margin-left:auto;margin-right:auto}
+.center .kicker::before{display:none}
+
+/* reveal on scroll */
+.reveal{opacity:0;transform:translateY(34px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+
+/* ============ Hero ============ */
+.hero{padding:calc(var(--nav-h) + 5.5rem) 0 5rem;min-height:92vh;display:flex;align-items:center}
+.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:4rem;align-items:center}
+@media(max-width:960px){.hero-grid{grid-template-columns:1fr;gap:3rem}}
+.pill{
+  display:inline-flex;align-items:center;gap:.55rem;padding:.5rem 1.05rem;border-radius:999px;
+  font-size:.82rem;font-weight:600;color:var(--amber);
+  background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);
+  margin-bottom:1.6rem;animation:glowPulse 3s ease-in-out infinite;
+}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 0 rgba(251,191,36,0)}50%{box-shadow:0 0 22px rgba(251,191,36,.18)}}
+.pill .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);animation:blink 1.4s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+h1{font-size:clamp(2.5rem,5.6vw,4.2rem);font-weight:900;letter-spacing:-.04em;line-height:1.06;margin-bottom:1.4rem}
+.grad-text{
+  background:linear-gradient(270deg,#4f8cff,#22d3ee,#34d399,#a78bfa,#4f8cff);
+  background-size:320% 320%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:hueShift 9s ease infinite;
+}
+@keyframes hueShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.hero p.sub{color:var(--muted);font-size:1.12rem;max-width:540px;margin-bottom:2.2rem}
+.hero p.sub strong{color:var(--red);font-weight:600}
+.cta-row{display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1.6rem}
+.btn{
+  display:inline-flex;align-items:center;gap:.6rem;padding:.95rem 1.7rem;border-radius:13px;
+  font-weight:700;font-size:1rem;cursor:pointer;border:0;transition:transform .2s,box-shadow .2s,background .2s;
+}
+.btn-primary{
+  background:var(--grad);background-size:200% 200%;color:#04121a;
+  box-shadow:0 10px 34px rgba(34,211,238,.3);animation:hueShift 9s ease infinite;
+}
+.btn-primary:hover{transform:translateY(-3px);box-shadow:0 16px 44px rgba(34,211,238,.45)}
+.btn-ghost{background:var(--surface);border:1px solid var(--line);color:#fff}
+.btn-ghost:hover{transform:translateY(-3px);background:rgba(148,163,255,.1);border-color:rgba(148,163,255,.4)}
+.btn svg{width:18px;height:18px}
+.hero .hint{font-size:.86rem;color:var(--faint,#5b6479)}
+.hero .hint code{color:var(--green);background:rgba(52,211,153,.09);padding:.2rem .5rem;border-radius:6px;font-size:.8rem}
+
+/* ============ Terminal ============ */
+.terminal{
+  border-radius:16px;overflow:hidden;border:1px solid var(--line);
+  background:rgba(3,6,14,.92);
+  box-shadow:0 30px 90px rgba(0,0,0,.6),0 0 70px rgba(79,140,255,.09);
+  transform:perspective(1200px) rotateY(-4deg) rotateX(2deg);
+  transition:transform .5s ease;
+  animation:floaty 7s ease-in-out infinite;
+}
+.terminal:hover{transform:perspective(1200px) rotateY(0) rotateX(0)}
+@keyframes floaty{0%,100%{translate:0 0}50%{translate:0 -12px}}
+.term-bar{display:flex;align-items:center;gap:.5rem;padding:.8rem 1rem;background:rgba(148,163,255,.05);border-bottom:1px solid var(--line)}
+.term-bar i{width:11px;height:11px;border-radius:50%}
+.term-bar i:nth-child(1){background:#ff5f57}.term-bar i:nth-child(2){background:#febc2e}.term-bar i:nth-child(3){background:#28c840}
+.term-bar span{margin-left:auto;margin-right:auto;font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+.term-body{padding:1.2rem 1.3rem;font-family:var(--mono);font-size:.8rem;line-height:1.75;min-height:340px;white-space:pre-wrap;word-break:break-word}
+.term-body .p{color:var(--green);font-weight:700}
+.term-body .c{color:#7dd3fc}
+.term-body .f{color:var(--red);font-weight:700}
+.term-body .k{color:var(--muted)}
+.term-body .ok{color:var(--green)}
+.term-body .warn{color:var(--amber)}
+.term-body .dim{color:#55607a}
+.cursor{display:inline-block;width:8px;height:15px;background:var(--green);vertical-align:-2px;animation:blink 1s steps(1) infinite}
+@media(max-width:960px){.terminal{transform:none;animation:none}}
+
+/* ============ Marquee ============ */
+.marquee{border-block:1px solid var(--line);padding:1.1rem 0;overflow:hidden;background:rgba(148,163,255,.03)}
+.marquee-track{display:flex;gap:3rem;width:max-content;animation:scrollX 30s linear infinite}
+.marquee:hover .marquee-track{animation-play-state:paused}
+@keyframes scrollX{to{transform:translateX(-50%)}}
+.marquee span{display:flex;align-items:center;gap:.6rem;font-family:var(--mono);font-size:.82rem;font-weight:600;color:var(--muted);white-space:nowrap}
+.marquee b{color:var(--cyan);font-weight:700}
+
+/* ============ Stats ============ */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1.2rem}
+@media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{
+  text-align:center;padding:2rem 1rem;border-radius:var(--radius);
+  background:var(--surface);border:1px solid var(--line);transition:.3s;
+}
+.stat:hover{transform:translateY(-5px);border-color:rgba(34,211,238,.35);box-shadow:0 18px 44px rgba(0,0,0,.35)}
+.stat .n{font-size:2rem;font-weight:900;letter-spacing:-.02em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat .l{font-size:.85rem;color:var(--muted);font-weight:600;margin-top:.3rem}
+
+/* ============ Feature cards (spotlight) ============ */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.4rem}
+@media(max-width:820px){.grid-2{grid-template-columns:1fr}}
+.card{
+  --mx:50%;--my:50%;
+  position:relative;padding:2.1rem;border-radius:var(--radius);
+  background:var(--surface);border:1px solid var(--line);overflow:hidden;
+  transition:transform .3s,border-color .3s;
+}
+.card::before{
+  content:"";position:absolute;inset:0;opacity:0;transition:opacity .35s;pointer-events:none;
+  background:radial-gradient(420px circle at var(--mx) var(--my),rgba(79,140,255,.14),transparent 60%);
+}
+.card:hover{transform:translateY(-5px);border-color:rgba(79,140,255,.35)}
+.card:hover::before{opacity:1}
+.card .ico{
+  width:50px;height:50px;border-radius:13px;display:grid;place-items:center;margin-bottom:1.2rem;font-size:1.35rem;
+  background:rgba(79,140,255,.12);border:1px solid rgba(79,140,255,.2);
+}
+.card h3{font-size:1.2rem;font-weight:800;margin-bottom:.55rem;letter-spacing:-.01em}
+.card p{color:var(--muted);font-size:.95rem}
+.card code{font-size:.78rem;padding:.14rem .42rem;border-radius:6px;background:rgba(52,211,153,.1);color:var(--green)}
+.card code.bad{background:rgba(248,113,113,.1);color:var(--red)}
+
+/* ============ Pipeline ============ */
+.pipeline{display:flex;align-items:stretch;gap:.6rem;flex-wrap:wrap;justify-content:center;margin-top:3rem}
+.pipe-step{
+  flex:1;min-width:150px;max-width:210px;text-align:center;padding:1.5rem 1rem;border-radius:16px;
+  background:var(--surface);border:1px solid var(--line);position:relative;transition:.3s;
+}
+.pipe-step.active{border-color:rgba(34,211,238,.5);box-shadow:0 0 34px rgba(34,211,238,.15);transform:translateY(-6px)}
+.pipe-step .em{font-size:1.6rem;margin-bottom:.5rem}
+.pipe-step h4{font-size:.95rem;font-weight:800}
+.pipe-step p{font-size:.78rem;color:var(--muted);margin-top:.3rem}
+.pipe-arrow{align-self:center;color:#3d4763;font-size:1.2rem;user-select:none}
+@media(max-width:700px){.pipe-arrow{display:none}.pipe-step{max-width:none;flex-basis:46%}}
+
+/* ============ Tabs + code ============ */
+.tabs{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.2rem;justify-content:center}
+.tab{
+  padding:.6rem 1.3rem;border-radius:11px;font-weight:700;font-size:.9rem;cursor:pointer;
+  color:var(--muted);background:var(--surface);border:1px solid var(--line);transition:.2s;
+}
+.tab:hover{color:#fff}
+.tab.active{color:#04121a;background:var(--grad);border-color:transparent;box-shadow:0 8px 24px rgba(34,211,238,.25)}
+.panel{display:none}
+.panel.active{display:block;animation:fadeUp .45s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.codebox{
+  position:relative;border-radius:16px;border:1px solid var(--line);
+  background:rgba(3,6,14,.92);box-shadow:0 20px 60px rgba(0,0,0,.45);
+}
+.codebox .cb-head{display:flex;align-items:center;justify-content:space-between;padding:.7rem 1.1rem;border-bottom:1px solid var(--line)}
+.codebox .cb-head span{font-family:var(--mono);font-size:.74rem;color:var(--muted)}
+.copy{
+  display:inline-flex;align-items:center;gap:.4rem;font-size:.74rem;font-weight:700;cursor:pointer;
+  color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:.35rem .7rem;transition:.2s;
+}
+.copy:hover{color:#fff;border-color:rgba(148,163,255,.4)}
+.copy.done{color:var(--green);border-color:rgba(52,211,153,.4)}
+.codebox pre{padding:1.3rem 1.4rem;overflow-x:auto;font-size:.85rem;line-height:1.8;scrollbar-width:thin}
+.codebox .cmd{color:var(--green);font-weight:600}
+.codebox .cmt{color:#55607a}
+.codebox .str{color:var(--amber)}
+.codebox .note{padding:0 1.4rem 1.2rem;font-size:.83rem;color:var(--muted);display:flex;gap:.5rem;align-items:baseline}
+.qs-wrap{max-width:760px;margin:0 auto}
+
+/* ============ Roadmap ============ */
+.timeline{max-width:730px;margin:3rem auto 0;position:relative}
+.timeline::before{
+  content:"";position:absolute;left:19px;top:8px;bottom:8px;width:2px;
+  background:linear-gradient(to bottom,var(--green),var(--cyan),#3d4763);
+}
+.tl-item{position:relative;padding:0 0 2rem 62px}
+.tl-item:last-child{padding-bottom:0}
+.tl-dot{
+  position:absolute;left:6px;top:4px;width:28px;height:28px;border-radius:50%;
+  display:grid;place-items:center;font-size:.75rem;
+  background:var(--bg-soft);border:2px solid #3d4763;color:var(--muted);z-index:1;
+}
+.tl-item.done .tl-dot{border-color:var(--green);color:var(--green);box-shadow:0 0 16px rgba(52,211,153,.35)}
+.tl-item.next .tl-dot{border-color:var(--amber);color:var(--amber);animation:glowPulse 2.6s infinite}
+.tl-card{
+  padding:1.4rem 1.6rem;border-radius:15px;background:var(--surface);
+  border:1px solid var(--line);transition:.3s;
+}
+.tl-card:hover{transform:translateX(6px);border-color:rgba(148,163,255,.35)}
+.tl-card h3{font-size:1.05rem;font-weight:800;margin-bottom:.35rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.tl-card p{font-size:.9rem;color:var(--muted)}
+.tag{font-size:.62rem;font-weight:800;letter-spacing:.07em;padding:.18rem .55rem;border-radius:999px;text-transform:uppercase}
+.tag.done{background:rgba(52,211,153,.12);color:var(--green);border:1px solid rgba(52,211,153,.3)}
+.tag.next{background:rgba(251,191,36,.1);color:var(--amber);border:1px solid rgba(251,191,36,.3)}
+.tag.later{background:rgba(148,163,255,.08);color:var(--muted);border:1px solid var(--line)}
+.tl-card code{font-size:.76rem;background:rgba(148,163,255,.09);padding:.12rem .4rem;border-radius:5px;color:#a5c8ff}
+
+/* ============ CTA ============ */
+.cta-box{
+  position:relative;text-align:center;padding:4.5rem 2rem;border-radius:26px;overflow:hidden;
+  background:var(--surface);border:1px solid var(--line);
+  box-shadow:0 0 90px rgba(79,140,255,.12) inset,0 30px 80px rgba(0,0,0,.4);
+}
+.cta-box::before{
+  content:"";position:absolute;inset:-2px;border-radius:inherit;padding:2px;pointer-events:none;
+  background:conic-gradient(from var(--spin,0deg),transparent 0 70%,#4f8cff 82%,#22d3ee 90%,transparent 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+  animation:spin 6s linear infinite;
+}
+@property --spin{syntax:"<angle>";initial-value:0deg;inherits:false}
+@keyframes spin{to{--spin:360deg}}
+.cta-box h2{margin-bottom:.8rem}
+.cta-box p{color:var(--muted);max-width:520px;margin:0 auto 2.2rem}
+
+/* ============ Footer ============ */
+footer{border-top:1px solid var(--line);padding:3rem 0;background:rgba(148,163,255,.02)}
+.foot{display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap}
+.foot .links{display:flex;gap:1.6rem;font-size:.88rem;color:var(--muted)}
+.foot .links a:hover{color:#fff}
+.foot .copy-line{font-size:.85rem;color:#55607a}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  html{scroll-behavior:auto}
+}
+</style>
 </head>
-<body class="bg-dark-950 text-white font-sans antialiased min-h-screen dot-pattern">
+<body>
 
-    <!-- Navigation -->
-    <nav class="fixed top-0 left-0 right-0 z-50 glass-bg border-b border-white/5">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-kube-500 to-accent-500 flex items-center justify-center shadow-lg shadow-blue-500/25">
-                        <i data-lucide="life-buoy" class="w-5 h-5 text-white"></i>
-                    </div>
-                    <span class="font-bold text-xl tracking-tight">Kube<span class="text-kube-400">Rescue</span></span>
-                    <span class="badge-beta text-xs font-bold px-2 py-0.5 rounded-full text-white">PRE-1.0</span>
-                </div>
-                <div class="hidden md:flex items-center gap-8 text-sm font-medium text-dark-300">
-                    <a href="#what-it-does" class="hover:text-white transition-colors duration-200">Features</a>
-                    <a href="#quick-start" class="hover:text-white transition-colors duration-200">Quick Start</a>
-                    <a href="#roadmap" class="hover:text-white transition-colors duration-200">Roadmap</a>
-                    <a href="https://github.com/sameeralam3127/KubeRescue" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-all duration-200 text-white border border-white/10">
-                        <i data-lucide="github" class="w-4 h-4"></i>
-                        GitHub
-                    </a>
-                </div>
-                <button id="mobileMenuBtn" class="md:hidden p-2 rounded-lg hover:bg-white/5 transition-colors">
-                    <i data-lucide="menu" class="w-6 h-6"></i>
-                </button>
-            </div>
+<div id="progress"></div>
+<div class="aurora"></div>
+<canvas id="bg-canvas"></canvas>
+
+<!-- ============ NAV ============ -->
+<nav id="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#top">
+      <span class="logo">🛟</span>
+      Kube<em>Rescue</em>
+      <span class="badge">PRE-1.0</span>
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#how">How It Works</a>
+      <a href="#quickstart">Quick Start</a>
+      <a href="#roadmap">Roadmap</a>
+      <a class="gh" href="https://github.com/sameeralam3127/KubeRescue" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.93c.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.54-3.87-1.54-.53-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.75 2.69 1.25 3.34.95.1-.74.4-1.25.72-1.54-2.55-.29-5.23-1.28-5.23-5.68 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.16 1.18a11 11 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.62 1.59.23 2.76.11 3.05.74.81 1.18 1.84 1.18 3.1 0 4.41-2.69 5.38-5.25 5.67.41.35.77 1.05.77 2.12v3.15c0 .31.2.67.8.55A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5z"/></svg>
+        GitHub
+      </a>
+    </div>
+    <button id="burger" aria-label="Menu">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+  </div>
+</nav>
+<div id="mobile-menu">
+  <a href="#features">Features</a>
+  <a href="#how">How It Works</a>
+  <a href="#quickstart">Quick Start</a>
+  <a href="#roadmap">Roadmap</a>
+  <a href="https://github.com/sameeralam3127/KubeRescue" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+</div>
+
+<!-- ============ HERO ============ -->
+<header class="hero" id="top">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="pill"><span class="dot"></span> Pre-1.0 — dev &amp; staging clusters, dry-run first</div>
+      <h1>Your Pods<br><span class="grad-text">Never Stay Broken</span></h1>
+      <p class="sub">
+        A Kubernetes remediation engine, written in Go, that understands failures before it fixes them.
+        It detects <strong>CrashLoopBackOff</strong> with full evidence and takes safe, bounded, truthful actions.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#quickstart">
+          Get Started
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/sameeralam3127/KubeRescue" target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.93c.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.54-3.87-1.54-.53-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.75 2.69 1.25 3.34.95.1-.74.4-1.25.72-1.54-2.55-.29-5.23-1.28-5.23-5.68 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.16 1.18a11 11 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.62 1.59.23 2.76.11 3.05.74.81 1.18 1.84 1.18 3.1 0 4.41-2.69 5.38-5.25 5.67.41.35.77 1.05.77 2.12v3.15c0 .31.2.67.8.55A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5z"/></svg>
+          Star on GitHub
+        </a>
+      </div>
+      <p class="hint">Preview everything first: <code>kuberescue monitor -n default --once --dry-run</code></p>
+    </div>
+
+    <div class="terminal" aria-hidden="true">
+      <div class="term-bar"><i></i><i></i><i></i><span>kuberescue — zsh</span></div>
+      <div class="term-body" id="term"></div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ MARQUEE ============ -->
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track" id="marquee-track">
+    <span>⚡ <b>Single Go binary</b></span>
+    <span>🔍 <b>Evidence-rich detection</b></span>
+    <span>🛡️ <b>Bare pods never deleted</b></span>
+    <span>🧪 <b>--dry-run first-class</b></span>
+    <span>📉 <b>--max-restarts budgets</b></span>
+    <span>📦 <b>Versioned JSON reports</b></span>
+    <span>🚦 <b>CI-friendly exit codes</b></span>
+    <span>☸️ <b>In-cluster or kubeconfig</b></span>
+    <span>🔓 <b>MIT licensed</b></span>
+  </div>
+</div>
+
+<!-- ============ STATS ============ -->
+<section style="padding:4.5rem 0">
+  <div class="wrap stats">
+    <div class="stat reveal"><div class="n" data-count="1">0</div><div class="l">Static Go binary</div></div>
+    <div class="stat reveal" style="transition-delay:.08s"><div class="n" data-count="0">0</div><div class="l">Bare pods ever deleted</div></div>
+    <div class="stat reveal" style="transition-delay:.16s"><div class="n" data-count="100" data-suffix="%">0</div><div class="l">Actions with evidence</div></div>
+    <div class="stat reveal" style="transition-delay:.24s"><div class="n" data-count="3">0</div><div class="l">Exit codes: 0 · 1 · 2</div></div>
+  </div>
+</section>
+
+<!-- ============ FEATURES ============ -->
+<section id="features">
+  <div class="wrap">
+    <div class="center reveal">
+      <div class="kicker">Features</div>
+      <h2>Safety-First <span class="grad-text">Remediation</span></h2>
+      <p class="lead" style="margin:0 auto 3rem">Evidence in, bounded action out, truthful report always.</p>
+    </div>
+    <div class="grid-2">
+      <div class="card reveal">
+        <div class="ico">👁️</div>
+        <h3>Watches Pods</h3>
+        <p>Monitors pods in a namespace (optionally filtered by label selector), once or on an interval — in-cluster or via your local kubeconfig.</p>
+      </div>
+      <div class="card reveal" style="transition-delay:.07s">
+        <div class="ico">🔬</div>
+        <h3>Detects With Evidence</h3>
+        <p>Finds containers stuck in <code class="bad">CrashLoopBackOff</code> and records why: restart count, last exit code, termination reason, and owning controller.</p>
+      </div>
+      <div class="card reveal" style="transition-delay:.14s">
+        <div class="ico">🛡️</div>
+        <h3>Restarts Safely</h3>
+        <p>Restarts only controller-managed pods — bare pods are never deleted. <code>--dry-run</code> previews everything and <code>--max-restarts</code> caps actions per scan.</p>
+      </div>
+      <div class="card reveal" style="transition-delay:.21s">
+        <div class="ico">📊</div>
+        <h3>Reports Truthfully</h3>
+        <p>Versioned JSON reports on stdout, structured logs on stderr, CI-friendly exit codes — and a dry run is never counted as a remediation.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section id="how" style="background:rgba(148,163,255,.02);border-block:1px solid var(--line)">
+  <div class="wrap">
+    <div class="center reveal">
+      <div class="kicker">Pipeline</div>
+      <h2>How It <span class="grad-text">Works</span></h2>
+      <p class="lead" style="margin:0 auto">Every scan runs the same honest loop — watch the steps light up.</p>
+    </div>
+    <div class="pipeline reveal" id="pipeline">
+      <div class="pipe-step"><div class="em">👁️</div><h4>Scan</h4><p>List pods in the namespace</p></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><div class="em">🔬</div><h4>Detect</h4><p>Pure functions over pod state</p></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><div class="em">🧾</div><h4>Evidence</h4><p>Exit code, reason, owner</p></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><div class="em">🛡️</div><h4>Safe Action</h4><p>Budgeted, controller-only</p></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><div class="em">📊</div><h4>Report</h4><p>Truthful, versioned JSON</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ QUICK START ============ -->
+<section id="quickstart">
+  <div class="wrap">
+    <div class="center reveal">
+      <div class="kicker">Quick Start</div>
+      <h2>Running in <span class="grad-text">Two Minutes</span></h2>
+      <p class="lead" style="margin:0 auto 2.6rem">Pick your path — build from source, run the Docker image, or try the crash-loop demo.</p>
+    </div>
+
+    <div class="qs-wrap reveal">
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-panel="p-source">🛠️ From Source</button>
+        <button class="tab" data-panel="p-docker">🐳 Docker</button>
+        <button class="tab" data-panel="p-demo">🧪 Cluster Demo</button>
+      </div>
+
+      <div class="panel active" id="p-source">
+        <div class="codebox">
+          <div class="cb-head"><span>terminal</span><button class="copy">📋 Copy</button></div>
+          <pre><code><span class="cmt"># Clone and build</span>
+<span class="cmd">git</span> clone https://github.com/sameeralam3127/KubeRescue.git
+<span class="cmd">cd</span> KubeRescue
+<span class="cmd">make</span> build
+
+<span class="cmt"># Preview what it would do — changes nothing</span>
+<span class="cmd">bin/kuberescue</span> monitor -n default --once --dry-run
+
+<span class="cmt"># Monitor continuously, at most 3 restarts per scan</span>
+<span class="cmd">bin/kuberescue</span> monitor -n default --interval 30s --max-restarts 3</code></pre>
+          <p class="note">💡 Tries in-cluster config first, falls back to local kubeconfig (<code>--kubeconfig</code>, <code>--context</code>). Add <code>-o json</code> for automation — exit code 2 signals findings.</p>
         </div>
-        <!-- Mobile menu -->
-        <div id="mobileMenu" class="hidden md:hidden glass-bg border-t border-white/5 px-4 py-4 space-y-3">
-            <a href="#what-it-does" class="block py-2 text-dark-300 hover:text-white transition-colors">Features</a>
-            <a href="#quick-start" class="block py-2 text-dark-300 hover:text-white transition-colors">Quick Start</a>
-            <a href="#roadmap" class="block py-2 text-dark-300 hover:text-white transition-colors">Roadmap</a>
-            <a href="https://github.com/sameeralam3127/KubeRescue" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 py-2 text-white">
-                <i data-lucide="github" class="w-4 h-4"></i> GitHub
-            </a>
+      </div>
+
+      <div class="panel" id="p-docker">
+        <div class="codebox">
+          <div class="cb-head"><span>terminal</span><button class="copy">📋 Copy</button></div>
+          <pre><code><span class="cmt"># Build the non-root distroless image</span>
+<span class="cmd">make</span> docker
+
+<span class="cmt"># Check the CLI</span>
+<span class="cmd">docker</span> run --rm kuberescue:local --help</code></pre>
+          <p class="note">💡 A single static Go binary inside a distroless base — small, fast, non-root.</p>
         </div>
-    </nav>
+      </div>
 
-    <!-- Hero Section -->
-    <section class="relative pt-32 pb-20 sm:pt-40 sm:pb-28 overflow-hidden grid-lines">
-        <div class="absolute inset-0 bg-gradient-to-b from-kube-950/40 via-dark-950 to-dark-950 pointer-events-none"></div>
-        <!-- Floating orbs -->
-        <div class="absolute top-20 left-10 w-72 h-72 bg-kube-500/10 rounded-full blur-3xl animate-pulse-slow"></div>
-        <div class="absolute top-40 right-10 w-96 h-96 bg-accent-500/8 rounded-full blur-3xl animate-pulse-slow" style="animation-delay: 1s;"></div>
-        <div class="absolute bottom-20 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-kube-600/6 rounded-full blur-3xl animate-pulse-slow" style="animation-delay: 2s;"></div>
+      <div class="panel" id="p-demo">
+        <div class="codebox">
+          <div class="cb-head"><span>terminal</span><button class="copy">📋 Copy</button></div>
+          <pre><code><span class="cmt"># Create an intentional CrashLoopBackOff</span>
+<span class="cmd">kubectl</span> create namespace kuberescue-test
+<span class="cmd">kubectl</span> apply -n kuberescue-test -f examples/crashloop-demo.yaml
 
-        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div class="animate-slide-up">
-                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-warning-500/10 border border-warning-500/20 text-warning-400 text-sm font-semibold mb-6">
-                    <i data-lucide="alert-triangle" class="w-4 h-4"></i>
-                    Pre-1.0 — for dev & staging clusters; use --dry-run anywhere you care about
-                </div>
-            </div>
-            <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6 animate-slide-up" style="animation-delay: 0.1s;">
-                Your Kubernetes Pods
-                <br>
-                <span class="gradient-animated bg-clip-text text-transparent">Never Stay Broken</span>
-            </h1>
-            <p class="text-lg sm:text-xl text-dark-300 max-w-3xl mx-auto mb-10 animate-slide-up" style="animation-delay: 0.2s;">
-                A Kubernetes remediation engine, written in Go, that understands failures before it fixes them.
-                It detects <span class="text-danger-400 font-semibold">CrashLoopBackOff</span> with full evidence
-                and takes safe, bounded, truthful remediation actions.
-            </p>
-            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style="animation-delay: 0.3s;">
-                <a href="#quick-start" class="group flex items-center gap-3 px-8 py-4 rounded-xl bg-white text-dark-900 font-semibold text-lg hover:bg-dark-100 transition-all duration-300 shadow-2xl shadow-white/10 hover:shadow-white/20">
-                    Get Started
-                    <i data-lucide="arrow-right" class="w-5 h-5 group-hover:translate-x-1 transition-transform"></i>
-                </a>
-                <a href="https://github.com/sameeralam3127/KubeRescue" target="_blank" rel="noopener noreferrer" class="flex items-center gap-3 px-8 py-4 rounded-xl bg-white/5 border border-white/10 text-white font-semibold text-lg hover:bg-white/10 transition-all duration-300">
-                    <i data-lucide="github" class="w-5 h-5"></i>
-                    View on GitHub
-                </a>
-            </div>
-            <p class="text-dark-400 text-sm mt-6 animate-slide-up" style="animation-delay: 0.4s;">
-                <code class="font-mono text-accent-400 bg-accent-500/10 px-2 py-0.5 rounded text-xs">kuberescue monitor -n default --once --dry-run</code>
-                &nbsp;— preview before you remediate
-            </p>
+<span class="cmt"># Observe first, then remediate</span>
+<span class="cmd">kuberescue</span> monitor -n kuberescue-test --once --dry-run
+<span class="cmd">kuberescue</span> monitor -n kuberescue-test --once
+
+<span class="cmt"># Clean up</span>
+<span class="cmd">kubectl</span> delete namespace kuberescue-test</code></pre>
+          <p class="note">💡 Works great with Docker Desktop's built-in Kubernetes (<code>docker-desktop</code> context).</p>
         </div>
-    </section>
+      </div>
+    </div>
+  </div>
+</section>
 
-    <!-- Stats / Trust indicators -->
-    <section class="relative py-12 border-y border-white/5">
-        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-                <div>
-                    <div class="text-3xl font-extrabold text-white mb-1">🐹</div>
-                    <p class="text-dark-400 text-sm font-medium">Written in Go</p>
-                </div>
-                <div>
-                    <div class="text-3xl font-extrabold text-white mb-1">⚡</div>
-                    <p class="text-dark-400 text-sm font-medium">Single Binary</p>
-                </div>
-                <div>
-                    <div class="text-3xl font-extrabold text-white mb-1">🐳</div>
-                    <p class="text-dark-400 text-sm font-medium">Docker Ready</p>
-                </div>
-                <div>
-                    <div class="text-3xl font-extrabold text-white mb-1">🔓</div>
-                    <p class="text-dark-400 text-sm font-medium">MIT Licensed</p>
-                </div>
-            </div>
+<!-- ============ ROADMAP ============ -->
+<section id="roadmap" style="background:rgba(148,163,255,.02);border-block:1px solid var(--line)">
+  <div class="wrap">
+    <div class="center reveal">
+      <div class="kicker">Roadmap</div>
+      <h2>Milestone by <span class="grad-text">Milestone</span></h2>
+      <p class="lead" style="margin:0 auto">Toward an intelligent, policy-gated remediation platform.</p>
+    </div>
+    <div class="timeline">
+      <div class="tl-item done reveal">
+        <div class="tl-dot">✓</div>
+        <div class="tl-card">
+          <h3>M0 — Go Rewrite <span class="tag done">Shipped</span></h3>
+          <p>Safety-first remediation kernel: evidence-rich detection, controller-only restarts, dry-run, restart budgets, versioned JSON reports.</p>
         </div>
-    </section>
-
-    <!-- What It Does -->
-    <section id="what-it-does" class="py-20 sm:py-28">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
-                <h2 class="text-3xl sm:text-4xl font-extrabold mb-4">What It <span class="text-kube-400">Does</span></h2>
-                <p class="text-dark-400 text-lg max-w-2xl mx-auto">A safety-first remediation loop: evidence in, bounded action out, truthful report always.</p>
-            </div>
-
-            <div class="grid md:grid-cols-2 gap-6 mb-16">
-                <div class="glass-card rounded-2xl p-8 relative overflow-hidden group">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-kube-500/5 rounded-bl-full -mr-8 -mt-8 group-hover:scale-150 transition-transform duration-700"></div>
-                    <div class="relative z-10">
-                        <div class="w-12 h-12 rounded-xl bg-kube-500/15 flex items-center justify-center mb-5">
-                            <i data-lucide="eye" class="w-6 h-6 text-kube-400"></i>
-                        </div>
-                        <h3 class="text-xl font-bold mb-3">Watches Pods</h3>
-                        <p class="text-dark-300">Monitors pods in a namespace (optionally filtered by label selector), once or on an interval — in-cluster or via your local kubeconfig.</p>
-                    </div>
-                </div>
-                <div class="glass-card rounded-2xl p-8 relative overflow-hidden group">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-danger-500/5 rounded-bl-full -mr-8 -mt-8 group-hover:scale-150 transition-transform duration-700"></div>
-                    <div class="relative z-10">
-                        <div class="w-12 h-12 rounded-xl bg-danger-500/15 flex items-center justify-center mb-5">
-                            <i data-lucide="bug" class="w-6 h-6 text-danger-400"></i>
-                        </div>
-                        <h3 class="text-xl font-bold mb-3">Detects With Evidence</h3>
-                        <p class="text-dark-300">Finds containers stuck in <code class="font-mono text-danger-400 bg-danger-500/10 px-1.5 py-0.5 rounded text-xs">CrashLoopBackOff</code> and records why: restart count, last exit code, termination reason, and owning controller.</p>
-                    </div>
-                </div>
-                <div class="glass-card rounded-2xl p-8 relative overflow-hidden group">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-accent-500/5 rounded-bl-full -mr-8 -mt-8 group-hover:scale-150 transition-transform duration-700"></div>
-                    <div class="relative z-10">
-                        <div class="w-12 h-12 rounded-xl bg-accent-500/15 flex items-center justify-center mb-5">
-                            <i data-lucide="trash-2" class="w-6 h-6 text-accent-400"></i>
-                        </div>
-                        <h3 class="text-xl font-bold mb-3">Restarts Safely</h3>
-                        <p class="text-dark-300">Restarts only controller-managed pods — bare pods are never deleted. <code class="font-mono text-accent-400 bg-accent-500/10 px-1.5 py-0.5 rounded text-xs">--dry-run</code> previews everything and <code class="font-mono text-accent-400 bg-accent-500/10 px-1.5 py-0.5 rounded text-xs">--max-restarts</code> caps actions per scan.</p>
-                    </div>
-                </div>
-                <div class="glass-card rounded-2xl p-8 relative overflow-hidden group">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-kube-500/5 rounded-bl-full -mr-8 -mt-8 group-hover:scale-150 transition-transform duration-700"></div>
-                    <div class="relative z-10">
-                        <div class="w-12 h-12 rounded-xl bg-kube-500/15 flex items-center justify-center mb-5">
-                            <i data-lucide="refresh-cw" class="w-6 h-6 text-kube-400"></i>
-                        </div>
-                        <h3 class="text-xl font-bold mb-3">Reports Truthfully</h3>
-                        <p class="text-dark-300">Versioned JSON reports on stdout, structured logs on stderr, CI-friendly exit codes — and a dry run is never counted as a remediation.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- What It Doesn't Do Yet -->
-            <div class="glass-bg rounded-2xl p-8 sm:p-10 border border-white/5">
-                <div class="flex items-center gap-3 mb-6">
-                    <div class="w-10 h-10 rounded-xl bg-warning-500/15 flex items-center justify-center">
-                        <i data-lucide="construction" class="w-5 h-5 text-warning-400"></i>
-                    </div>
-                    <h3 class="text-xl font-bold">What It <span class="text-warning-400">Doesn't Do Yet</span></h3>
-                </div>
-                <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <span class="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/3 border border-white/5 text-dark-300 text-sm">
-                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Diagnose / explain commands
-                    </span>
-                    <span class="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/3 border border-white/5 text-dark-300 text-sm">
-                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Policy engine & cooldowns
-                    </span>
-                    <span class="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/3 border border-white/5 text-dark-300 text-sm">
-                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Operator with CRDs
-                    </span>
-                    <span class="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/3 border border-white/5 text-dark-300 text-sm">
-                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Slack / webhook output
-                    </span>
-                    <span class="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/3 border border-white/5 text-dark-300 text-sm">
-                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Prometheus metrics
-                    </span>
-                    <span class="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/3 border border-white/5 text-dark-300 text-sm">
-                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Helm chart packaging
-                    </span>
-                </div>
-            </div>
+      </div>
+      <div class="tl-item next reveal">
+        <div class="tl-dot">●</div>
+        <div class="tl-card">
+          <h3>M1 — Diagnose <span class="tag next">Up Next</span></h3>
+          <p><code>kuberescue diagnose</code> / <code>explain</code> for the five most common failure classes, with events and log evidence.</p>
         </div>
-    </section>
-
-    <!-- Quick Start -->
-    <section id="quick-start" class="py-20 sm:py-28 bg-dark-950/50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
-                <h2 class="text-3xl sm:text-4xl font-extrabold mb-4">🚀 Quick Start</h2>
-                <p class="text-dark-400 text-lg max-w-2xl mx-auto">Get KubeRescue running in under two minutes.</p>
-            </div>
-
-            <div class="max-w-3xl mx-auto space-y-8">
-                <!-- Step 1 -->
-                <div class="glass-card rounded-2xl p-6 sm:p-8">
-                    <div class="flex items-center gap-3 mb-4">
-                        <span class="w-8 h-8 rounded-lg bg-kube-500 text-white flex items-center justify-center text-sm font-bold">1</span>
-                        <h3 class="font-semibold text-lg">Clone & Build</h3>
-                    </div>
-                    <div class="code-block p-4 sm:p-6">
-                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-accent-400">git</span> clone https://github.com/sameeralam3127/KubeRescue.git
-<span class="text-accent-400">cd</span> KubeRescue
-<span class="text-accent-400">make</span> build
-<span class="text-accent-400">bin/kuberescue</span> --help</code></pre>
-                    </div>
-                </div>
-
-                <!-- Step 2 -->
-                <div class="glass-card rounded-2xl p-6 sm:p-8">
-                    <div class="flex items-center gap-3 mb-4">
-                        <span class="w-8 h-8 rounded-lg bg-kube-500 text-white flex items-center justify-center text-sm font-bold">2</span>
-                        <h3 class="font-semibold text-lg">Preview With Dry-Run</h3>
-                    </div>
-                    <div class="code-block p-4 sm:p-6">
-                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-accent-400">kuberescue</span> monitor -n default --once --dry-run</code></pre>
-                    </div>
-                    <p class="text-dark-400 text-sm mt-4 flex items-center gap-2">
-                        <i data-lucide="info" class="w-4 h-4"></i>
-                        Reports what it would do without touching the cluster. Add <code class="font-mono text-xs">-o json</code> for automation.
-                    </p>
-                </div>
-
-                <!-- Step 3 -->
-                <div class="glass-card rounded-2xl p-6 sm:p-8">
-                    <div class="flex items-center gap-3 mb-4">
-                        <span class="w-8 h-8 rounded-lg bg-kube-500 text-white flex items-center justify-center text-sm font-bold">3</span>
-                        <h3 class="font-semibold text-lg">Monitor & Remediate</h3>
-                    </div>
-                    <div class="code-block p-4 sm:p-6">
-                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-accent-400">kuberescue</span> monitor -n default --interval 30s --max-restarts 3</code></pre>
-                    </div>
-                    <p class="text-dark-400 text-sm mt-4 flex items-center gap-2">
-                        <i data-lucide="info" class="w-4 h-4"></i>
-                        Tries in-cluster config first, falls back to local kubeconfig (<code class="font-mono text-xs">--kubeconfig</code>, <code class="font-mono text-xs">--context</code>).
-                    </p>
-                </div>
-            </div>
+      </div>
+      <div class="tl-item reveal">
+        <div class="tl-dot">○</div>
+        <div class="tl-card">
+          <h3>M2 — Safe Remediation Kernel <span class="tag later">Planned</span></h3>
+          <p>Per-cause actions, policy gate with cooldowns and rate budgets, protected namespaces, simulate via server-side dry-run, audit history.</p>
         </div>
-    </section>
-
-    <!-- Docker Section -->
-    <section class="py-20 sm:py-28">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
-                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-kube-500/10 border border-kube-500/20 text-kube-400 text-sm font-semibold mb-4">
-                    <i data-lucide="container" class="w-4 h-4"></i> Docker Ready
-                </div>
-                <h2 class="text-3xl sm:text-4xl font-extrabold mb-4">🐳 Docker Image</h2>
-                <p class="text-dark-400 text-lg max-w-2xl mx-auto">A non-root distroless image with a single static Go binary inside.</p>
-            </div>
-
-            <div class="max-w-3xl mx-auto space-y-6">
-                <div class="glass-card rounded-2xl p-6 sm:p-8">
-                    <h3 class="font-semibold text-lg mb-4">Build the Image</h3>
-                    <div class="code-block p-4 sm:p-6">
-                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-accent-400">make</span> docker</code></pre>
-                    </div>
-                </div>
-                <div class="glass-card rounded-2xl p-6 sm:p-8">
-                    <h3 class="font-semibold text-lg mb-4">Check the CLI</h3>
-                    <div class="code-block p-4 sm:p-6">
-                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-accent-400">docker</span> run --rm kuberescue:local --help</code></pre>
-                    </div>
-                </div>
-            </div>
+      </div>
+      <div class="tl-item reveal">
+        <div class="tl-dot">○</div>
+        <div class="tl-card">
+          <h3>M3 — Operator <span class="tag later">Planned</span></h3>
+          <p>CRDs for policies and actions, informer-based controller, leader election, Prometheus metrics, approval workflow, Helm chart.</p>
         </div>
-    </section>
-
-    <!-- Docker Desktop Kubernetes Demo -->
-    <section class="py-20 sm:py-28 bg-dark-950/50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
-                <h2 class="text-3xl sm:text-4xl font-extrabold mb-4">🧪 Docker Desktop K8s Demo</h2>
-                <p class="text-dark-400 text-lg max-w-2xl mx-auto">A safe, isolated demo that creates an intentional CrashLoopBackOff to showcase KubeRescue in action.</p>
-            </div>
-
-            <div class="max-w-3xl mx-auto space-y-6">
-                <div class="glass-card rounded-2xl p-6 sm:p-8">
-                    <div class="flex items-center gap-3 mb-4">
-                        <span class="w-7 h-7 rounded-lg bg-warning-500/20 text-warning-400 flex items-center justify-center text-xs font-bold">!</span>
-                        <h3 class="font-semibold text-base">Prerequisites</h3>
-                    </div>
-                    <ul class="space-y-2 text-dark-300 text-sm">
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-accent-400 flex-shrink-0"></i> Docker Desktop running with Kubernetes enabled</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-accent-400 flex-shrink-0"></i> <code class="font-mono text-dark-200 bg-dark-800 px-1.5 py-0.5 rounded text-xs">kubectl config current-context</code> returns <code class="font-mono text-kube-300 bg-dark-800 px-1.5 py-0.5 rounded text-xs">docker-desktop</code></li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-accent-400 flex-shrink-0"></i> <code class="font-mono text-dark-200 bg-dark-800 px-1.5 py-0.5 rounded text-xs">kuberescue:local</code> image exists from Docker build</li>
-                    </ul>
-                </div>
-
-                <div class="glass-card rounded-2xl p-6 sm:p-8">
-                    <h3 class="font-semibold text-lg mb-4">Run the Demo</h3>
-                    <div class="code-block p-4 sm:p-6 space-y-3">
-                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-dark-500"># Create test namespace</span>
-<span class="text-accent-400">kubectl</span> create namespace kuberescue-test
-
-<span class="text-dark-500"># Deploy crashing workload</span>
-<span class="text-accent-400">kubectl</span> apply -n kuberescue-test -f examples/crashloop-demo.yaml
-
-<span class="text-dark-500"># Observe first, then remediate</span>
-<span class="text-accent-400">kuberescue</span> monitor -n kuberescue-test --once --dry-run
-<span class="text-accent-400">kuberescue</span> monitor -n kuberescue-test --once
-
-<span class="text-dark-500"># Watch pods get replaced (in another terminal)</span>
-<span class="text-accent-400">kubectl</span> get pods -n kuberescue-test
-
-<span class="text-dark-500"># Clean up</span>
-<span class="text-accent-400">kubectl</span> delete namespace kuberescue-test</code></pre>
-                    </div>
-                </div>
-            </div>
+      </div>
+      <div class="tl-item reveal">
+        <div class="tl-dot">○</div>
+        <div class="tl-card">
+          <h3>M4 — Ecosystem <span class="tag later">Planned</span></h3>
+          <p>Slack and webhook notifications, Grafana dashboards, OpenTelemetry, signed releases with SBOM.</p>
         </div>
-    </section>
+      </div>
+    </div>
+  </div>
+</section>
 
+<!-- ============ CTA ============ -->
+<section>
+  <div class="wrap">
+    <div class="cta-box reveal">
+      <h2>Ready to <span class="grad-text">Auto-Heal</span> Your Clusters?</h2>
+      <p>KubeRescue is open source and MIT licensed. Clone it, dry-run it against a dev cluster, and contribute back.</p>
+      <div class="cta-row" style="justify-content:center">
+        <a class="btn btn-primary" href="https://github.com/sameeralam3127/KubeRescue" target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="18"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.93c.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.54-3.87-1.54-.53-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.75 2.69 1.25 3.34.95.1-.74.4-1.25.72-1.54-2.55-.29-5.23-1.28-5.23-5.68 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.16 1.18a11 11 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.62 1.59.23 2.76.11 3.05.74.81 1.18 1.84 1.18 3.1 0 4.41-2.69 5.38-5.25 5.67.41.35.77 1.05.77 2.12v3.15c0 .31.2.67.8.55A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5z"/></svg>
+          Star on GitHub
+        </a>
+        <a class="btn btn-ghost" href="#quickstart">⌨️ Quick Start</a>
+      </div>
+    </div>
+  </div>
+</section>
 
-    <!-- Roadmap -->
-    <section id="roadmap" class="py-20 sm:py-28 bg-dark-950/50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
-                <h2 class="text-3xl sm:text-4xl font-extrabold mb-4">🗺️ Roadmap</h2>
-                <p class="text-dark-400 text-lg max-w-2xl mx-auto">What's coming next for KubeRescue.</p>
-            </div>
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="wrap foot">
+    <a class="brand" href="#top"><span class="logo" style="width:30px;height:30px;font-size:.9rem">🛟</span> Kube<em>Rescue</em></a>
+    <div class="links">
+      <a href="https://github.com/sameeralam3127/KubeRescue/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a>
+      <a href="https://github.com/sameeralam3127/KubeRescue" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://github.com/sameeralam3127/KubeRescue/issues" target="_blank" rel="noopener noreferrer">Issues</a>
+    </div>
+    <p class="copy-line">© 2026 KubeRescue · Pre-1.0 — dry-run first.</p>
+  </div>
+</footer>
 
-            <div class="max-w-3xl mx-auto">
-                <div class="relative">
-                    <!-- Timeline line -->
-                    <div class="absolute left-5 top-0 bottom-0 w-0.5 bg-white/8 hidden sm:block"></div>
+<script>
+(function(){
+"use strict";
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-                    <div class="space-y-6">
-                        <div class="flex gap-4 sm:gap-8 items-start relative">
-                            <div class="w-10 h-10 rounded-full bg-kube-500/20 border-2 border-kube-500 flex items-center justify-center flex-shrink-0 z-10 hidden sm:flex">
-                                <i data-lucide="check" class="w-5 h-5 text-kube-400"></i>
-                            </div>
-                            <div class="glass-card rounded-2xl p-5 flex-1">
-                                <h3 class="font-bold text-white mb-1">✅ M0 — Go Rewrite</h3>
-                                <p class="text-dark-300 text-sm">Safety-first remediation kernel: evidence-rich detection, controller-only restarts, dry-run, restart budgets, versioned JSON reports. <span class="text-accent-400 font-medium">Done!</span></p>
-                            </div>
-                        </div>
-                        <div class="flex gap-4 sm:gap-8 items-start relative">
-                            <div class="w-10 h-10 rounded-full bg-warning-500/20 border-2 border-warning-500 flex items-center justify-center flex-shrink-0 z-10 hidden sm:flex">
-                                <i data-lucide="clock" class="w-5 h-5 text-warning-400"></i>
-                            </div>
-                            <div class="glass-card rounded-2xl p-5 flex-1">
-                                <h3 class="font-bold text-white mb-1">🔜 M1 — Diagnose</h3>
-                                <p class="text-dark-300 text-sm"><code class="font-mono text-xs">kuberescue diagnose</code> / <code class="font-mono text-xs">explain</code> for the five most common failure classes, with events and log evidence.</p>
-                            </div>
-                        </div>
-                        <div class="flex gap-4 sm:gap-8 items-start relative">
-                            <div class="w-10 h-10 rounded-full bg-warning-500/20 border-2 border-warning-500 flex items-center justify-center flex-shrink-0 z-10 hidden sm:flex">
-                                <i data-lucide="clock" class="w-5 h-5 text-warning-400"></i>
-                            </div>
-                            <div class="glass-card rounded-2xl p-5 flex-1">
-                                <h3 class="font-bold text-white mb-1">🔜 M2 — Safe Remediation Kernel</h3>
-                                <p class="text-dark-300 text-sm">Per-cause actions, policy gate with cooldowns and rate budgets, protected namespaces, simulate via server-side dry-run, audit history.</p>
-                            </div>
-                        </div>
-                        <div class="flex gap-4 sm:gap-8 items-start relative">
-                            <div class="w-10 h-10 rounded-full bg-dark-700/50 border-2 border-dark-600 flex items-center justify-center flex-shrink-0 z-10 hidden sm:flex">
-                                <i data-lucide="circle" class="w-4 h-4 text-dark-500"></i>
-                            </div>
-                            <div class="glass-card rounded-2xl p-5 flex-1">
-                                <h3 class="font-bold text-white mb-1">☸️ M3 — Operator</h3>
-                                <p class="text-dark-300 text-sm">CRDs for policies and actions, informer-based controller, leader election, Prometheus metrics, approval workflow, Helm chart.</p>
-                            </div>
-                        </div>
-                        <div class="flex gap-4 sm:gap-8 items-start relative">
-                            <div class="w-10 h-10 rounded-full bg-dark-700/50 border-2 border-dark-600 flex items-center justify-center flex-shrink-0 z-10 hidden sm:flex">
-                                <i data-lucide="circle" class="w-4 h-4 text-dark-500"></i>
-                            </div>
-                            <div class="glass-card rounded-2xl p-5 flex-1">
-                                <h3 class="font-bold text-white mb-1">🌐 M4 — Ecosystem</h3>
-                                <p class="text-dark-300 text-sm">Slack and webhook notifications, Grafana dashboards, OpenTelemetry, signed releases with SBOM.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+/* ---------- Scroll progress + nav hide ---------- */
+const progress = document.getElementById("progress");
+const nav = document.getElementById("nav");
+let lastY = 0;
+addEventListener("scroll", () => {
+  const y = scrollY;
+  const h = document.documentElement.scrollHeight - innerHeight;
+  progress.style.width = (h > 0 ? (y / h) * 100 : 0) + "%";
+  nav.classList.toggle("hidden-nav", y > 140 && y > lastY);
+  lastY = y;
+}, {passive: true});
 
-    <!-- CTA Section -->
-    <section class="py-20 sm:py-28">
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div class="glass-card rounded-3xl p-10 sm:p-16 highlight-glow relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-64 h-64 bg-kube-500/8 rounded-bl-full -mr-16 -mt-16"></div>
-                <div class="absolute bottom-0 left-0 w-64 h-64 bg-accent-500/8 rounded-tr-full -ml-16 -mb-16"></div>
-                <div class="relative z-10">
-                    <h2 class="text-3xl sm:text-4xl font-extrabold mb-4">Ready to Auto-Heal Your Clusters?</h2>
-                    <p class="text-dark-300 text-lg mb-8 max-w-xl mx-auto">KubeRescue is open source and MIT licensed. Clone it, test it, and contribute back!</p>
-                    <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-                        <a href="https://github.com/sameeralam3127/KubeRescue" target="_blank" rel="noopener noreferrer" class="group flex items-center gap-3 px-8 py-4 rounded-xl bg-white text-dark-900 font-semibold text-lg hover:bg-dark-100 transition-all duration-300 shadow-xl">
-                            <i data-lucide="github" class="w-5 h-5"></i>
-                            Star on GitHub
-                            <i data-lucide="external-link" class="w-4 h-4"></i>
-                        </a>
-                        <a href="#quick-start" class="flex items-center gap-3 px-8 py-4 rounded-xl bg-white/5 border border-white/10 text-white font-semibold text-lg hover:bg-white/10 transition-all duration-300">
-                            <i data-lucide="terminal" class="w-5 h-5"></i>
-                            Quick Start
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+/* ---------- Mobile menu ---------- */
+const burger = document.getElementById("burger");
+const menu = document.getElementById("mobile-menu");
+burger.addEventListener("click", () => menu.classList.toggle("open"));
+menu.querySelectorAll("a").forEach(a => a.addEventListener("click", () => menu.classList.remove("open")));
 
-    <!-- Footer -->
-    <footer class="border-t border-white/5 py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex flex-col sm:flex-row items-center justify-between gap-6">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-kube-500 to-accent-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                        <i data-lucide="life-buoy" class="w-4 h-4 text-white"></i>
-                    </div>
-                    <span class="font-bold text-lg">Kube<span class="text-kube-400">Rescue</span></span>
-                </div>
-                <div class="flex items-center gap-6 text-sm text-dark-400">
-                    <a href="https://github.com/sameeralam3127/KubeRescue/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">MIT License</a>
-                    <a href="https://github.com/sameeralam3127/KubeRescue" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors flex items-center gap-1.5">
-                        <i data-lucide="github" class="w-4 h-4"></i> GitHub
-                    </a>
-                </div>
-                <p class="text-dark-500 text-sm">&copy; 2026 KubeRescue. Not production-ready.</p>
-            </div>
-        </div>
-    </footer>
+/* ---------- Reveal on scroll ---------- */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
+}, {threshold: .15});
+document.querySelectorAll(".reveal").forEach(el => io.observe(el));
 
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script>
-        lucide.createIcons();
+/* ---------- Count-up stats ---------- */
+const statIO = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    statIO.unobserve(e.target);
+    const el = e.target, end = +el.dataset.count, suffix = el.dataset.suffix || "";
+    if (reduceMotion || end === 0) { el.textContent = end + suffix; return; }
+    const t0 = performance.now(), dur = 1200;
+    (function tick(t){
+      const p = Math.min((t - t0) / dur, 1);
+      el.textContent = Math.round(end * (1 - Math.pow(1 - p, 3))) + suffix;
+      if (p < 1) requestAnimationFrame(tick);
+    })(t0);
+  });
+}, {threshold: .6});
+document.querySelectorAll("[data-count]").forEach(el => statIO.observe(el));
 
-        // Mobile menu toggle
-        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-        const mobileMenu = document.getElementById('mobileMenu');
+/* ---------- Spotlight cards ---------- */
+document.querySelectorAll(".card").forEach(card => {
+  card.addEventListener("mousemove", e => {
+    const r = card.getBoundingClientRect();
+    card.style.setProperty("--mx", (e.clientX - r.left) + "px");
+    card.style.setProperty("--my", (e.clientY - r.top) + "px");
+  });
+});
 
-        mobileMenuBtn.addEventListener('click', () => {
-            mobileMenu.classList.toggle('hidden');
-            const icon = mobileMenuBtn.querySelector('i');
-            if (mobileMenu.classList.contains('hidden')) {
-                icon.setAttribute('data-lucide', 'menu');
-            } else {
-                icon.setAttribute('data-lucide', 'x');
-            }
-            lucide.createIcons();
-        });
+/* ---------- Pipeline step highlight loop ---------- */
+const steps = document.querySelectorAll(".pipe-step");
+if (steps.length && !reduceMotion) {
+  let i = 0;
+  setInterval(() => {
+    steps.forEach(s => s.classList.remove("active"));
+    steps[i % steps.length].classList.add("active");
+    i++;
+  }, 1400);
+}
 
-        // Close mobile menu on link click
-        mobileMenu.querySelectorAll('a').forEach(link => {
-            link.addEventListener('click', () => {
-                mobileMenu.classList.add('hidden');
-                const icon = mobileMenuBtn.querySelector('i');
-                icon.setAttribute('data-lucide', 'menu');
-                lucide.createIcons();
-            });
-        });
+/* ---------- Tabs ---------- */
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById(tab.dataset.panel).classList.add("active");
+  });
+});
 
-        // Smooth scroll for all anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function(e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    const offset = 80;
-                    const position = target.getBoundingClientRect().top + window.pageYOffset - offset;
-                    window.scrollTo({ top: position, behavior: 'smooth' });
-                }
-            });
-        });
-    </script>
+/* ---------- Copy buttons ---------- */
+document.querySelectorAll(".copy").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    const pre = btn.closest(".codebox").querySelector("pre");
+    try {
+      await navigator.clipboard.writeText(pre.innerText);
+      btn.textContent = "✅ Copied!";
+      btn.classList.add("done");
+      setTimeout(() => { btn.textContent = "📋 Copy"; btn.classList.remove("done"); }, 1800);
+    } catch { btn.textContent = "⚠️ Failed"; }
+  });
+});
+
+/* ---------- Marquee: duplicate track for seamless loop ---------- */
+const track = document.getElementById("marquee-track");
+track.innerHTML += track.innerHTML;
+
+/* ---------- Terminal typing demo ---------- */
+const term = document.getElementById("term");
+const script = [
+  {t: "prompt", html: '<span class="p">$</span> <span class="c">kuberescue monitor -n production --once --dry-run</span>'},
+  {t: "out", html: '<span class="dim">⠋ scanning namespace production…</span>', delay: 500},
+  {t: "out", html: '<span class="f">CrashLoopBackOff</span>  production/api-7c8f9f6d9b-x2q4m'},
+  {t: "out", html: '  <span class="k">container=</span>api <span class="k">restarts=</span><span class="warn">7</span> <span class="k">lastReason=</span><span class="warn">OOMKilled</span> <span class="k">exitCode=</span><span class="warn">137</span>'},
+  {t: "out", html: '  <span class="k">owner=</span>ReplicaSet/api-7c8f9f6d9b'},
+  {t: "out", html: '  <span class="k">action:</span> <span class="warn">would restart (dry-run)</span>'},
+  {t: "out", html: '<span class="k">Summary:</span> detected=1 restarted=0 skipped=0 failed=0', delay: 900},
+  {t: "prompt", html: '<span class="p">$</span> <span class="c">kuberescue monitor -n production --once --max-restarts 3</span>'},
+  {t: "out", html: '<span class="f">CrashLoopBackOff</span>  production/api-7c8f9f6d9b-x2q4m'},
+  {t: "out", html: '  <span class="k">action:</span> <span class="ok">restarted ✓</span>'},
+  {t: "out", html: '<span class="k">Summary:</span> detected=1 <span class="ok">restarted=1</span> skipped=0 failed=0', delay: 700},
+  {t: "out", html: '<span class="ok">✓ pod replaced by ReplicaSet — healthy in 4s</span>', delay: 2600},
+];
+
+function runTerminal(){
+  term.innerHTML = "";
+  let idx = 0;
+  function nextLine(){
+    if (idx >= script.length) { setTimeout(runTerminal, 3800); return; }
+    const line = script[idx++];
+    const div = document.createElement("div");
+    term.appendChild(div);
+    if (line.t === "prompt" && !reduceMotion) {
+      // type the command character by character
+      const tmp = document.createElement("div");
+      tmp.innerHTML = line.html;
+      const promptSpan = tmp.querySelector(".p");
+      const cmd = tmp.querySelector(".c").textContent;
+      let ci = 0;
+      div.innerHTML = promptSpan.outerHTML + ' <span class="c"></span><span class="cursor"></span>';
+      const target = div.querySelector(".c");
+      (function typeChar(){
+        if (ci < cmd.length) {
+          target.textContent += cmd[ci++];
+          setTimeout(typeChar, 22 + Math.random() * 40);
+        } else {
+          div.querySelector(".cursor").remove();
+          setTimeout(nextLine, 350);
+        }
+      })();
+    } else {
+      div.innerHTML = line.html;
+      setTimeout(nextLine, line.delay || 120);
+    }
+  }
+  nextLine();
+}
+runTerminal();
+
+/* ---------- Particle network background ---------- */
+const canvas = document.getElementById("bg-canvas");
+const ctx = canvas.getContext("2d");
+let W, H, dots = [];
+function sizeCanvas(){
+  W = canvas.width = innerWidth;
+  H = canvas.height = innerHeight;
+  const n = Math.min(90, Math.floor(W * H / 24000));
+  dots = Array.from({length: n}, () => ({
+    x: Math.random() * W, y: Math.random() * H,
+    vx: (Math.random() - .5) * .35, vy: (Math.random() - .5) * .35,
+    r: 1 + Math.random() * 1.6,
+  }));
+}
+sizeCanvas();
+addEventListener("resize", sizeCanvas);
+function drawBG(){
+  ctx.clearRect(0, 0, W, H);
+  for (const d of dots) {
+    d.x += d.vx; d.y += d.vy;
+    if (d.x < 0 || d.x > W) d.vx *= -1;
+    if (d.y < 0 || d.y > H) d.vy *= -1;
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(110,150,255,.5)";
+    ctx.fill();
+  }
+  for (let i = 0; i < dots.length; i++) {
+    for (let j = i + 1; j < dots.length; j++) {
+      const dx = dots[i].x - dots[j].x, dy = dots[i].y - dots[j].y;
+      const dist = dx * dx + dy * dy;
+      if (dist < 130 * 130) {
+        ctx.strokeStyle = "rgba(90,130,255," + (.14 * (1 - dist / (130 * 130))) + ")";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(dots[i].x, dots[i].y);
+        ctx.lineTo(dots[j].x, dots[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(drawBG);
+}
+if (!reduceMotion) drawBG();
+})();
+</script>
 </body>
 </html>
