@@ -18,9 +18,5 @@ spec:
     spec:
       containers:
         - name: crashloop-demo
-          image: kuberescue:local
-          imagePullPolicy: Never
-          command:
-            - python
-            - -c
-            - "import sys; sys.exit(1)"
+          image: busybox:1.36
+          command: ["sh", "-c", "echo 'crashing on purpose'; exit 1"]

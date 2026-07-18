@@ -1,45 +1,63 @@
-name: KubeRescue CI
+name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  lint-test-security:
+  build-and-test:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        python-version: ["3.11"]
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          go-version-file: go.mod
 
-      - name: Install dependencies
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test (race detector + coverage)
+        run: go test -race -coverprofile=coverage.out ./...
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+
+  vulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: govulncheck
         run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-
-      - name: Run Black (format check)
-        run: black --check .
-
-      - name: Run Ruff
-        run: ruff check .
-
-      - name: Run Flake8
-        run: flake8 .
-
-      - name: Run Bandit (security scan)
-        run: bandit -r kuberescue
-
-      - name: Run MyPy (type checking)
-        run: mypy kuberescue
-      - name: Run Pytest
-        run: pytest -v
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...

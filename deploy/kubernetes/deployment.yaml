@@ -7,6 +7,8 @@ metadata:
     app.kubernetes.io/name: kuberescue
     app.kubernetes.io/part-of: kuberescue
 spec:
+  # Keep replicas at 1: KubeRescue has no leader election yet, and two
+  # replicas would remediate the same pods twice.
   replicas: 1
   selector:
     matchLabels:
@@ -18,14 +20,30 @@ spec:
         app.kubernetes.io/part-of: kuberescue
     spec:
       serviceAccountName: kuberescue
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: kuberescue
           image: kuberescue:local
           imagePullPolicy: IfNotPresent
           args:
-            - --namespace
-            - default
-            - --interval
-            - "10"
-            - --max-restarts
-            - "3"
+            - monitor
+            - --namespace=default
+            - --interval=30s
+            - --max-restarts=3
+            # Remove --dry-run only after you have reviewed what it reports.
+            - --dry-run
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 64Mi

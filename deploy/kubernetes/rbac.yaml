@@ -7,10 +7,14 @@ metadata:
     app.kubernetes.io/name: kuberescue
     app.kubernetes.io/part-of: kuberescue
 ---
+# KubeRescue is granted access only in the namespace it monitors.
+# Create one Role + RoleBinding per monitored namespace; do NOT use a
+# ClusterRole unless you genuinely intend cluster-wide remediation.
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: Role
 metadata:
   name: kuberescue
+  namespace: default # the namespace KubeRescue monitors
   labels:
     app.kubernetes.io/name: kuberescue
     app.kubernetes.io/part-of: kuberescue
@@ -20,15 +24,16 @@ rules:
     verbs: ["get", "list", "watch", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: RoleBinding
 metadata:
   name: kuberescue
+  namespace: default # must match the Role's namespace
   labels:
     app.kubernetes.io/name: kuberescue
     app.kubernetes.io/part-of: kuberescue
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
+  kind: Role
   name: kuberescue
 subjects:
   - kind: ServiceAccount

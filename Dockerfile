@@ -1,23 +1,22 @@
-FROM python:3.13-slim AS test
+FROM golang:1.26 AS build
 
-WORKDIR /app
+WORKDIR /src
 
-COPY pyproject.toml README.md ./
-COPY kuberescue ./kuberescue
-COPY tests ./tests
+COPY go.mod go.sum ./
+RUN go mod download
 
-RUN pip install --no-cache-dir -e ".[dev]"
-RUN pytest -v && touch /tmp/tests-passed
+COPY . .
 
-FROM python:3.13-slim
+ARG VERSION=dev
+RUN CGO_ENABLED=0 go build -trimpath \
+    -ldflags "-s -w -X github.com/sameeralam3127/kuberescue/internal/cli.version=${VERSION}" \
+    -o /out/kuberescue ./cmd/kuberescue
 
-WORKDIR /app
+FROM gcr.io/distroless/static:nonroot
 
-COPY pyproject.toml README.md ./
-COPY kuberescue ./kuberescue
-COPY --from=test /tmp/tests-passed /tmp/tests-passed
+COPY --from=build /out/kuberescue /kuberescue
 
-RUN pip install --no-cache-dir -e .
+USER nonroot:nonroot
 
-ENTRYPOINT ["kuberescue"]
+ENTRYPOINT ["/kuberescue"]
 CMD ["--help"]

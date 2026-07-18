@@ -1,283 +1,159 @@
 # KubeRescue
 
-> Lightweight Kubernetes CrashLoopBackOff auto-remediation for development and staging clusters.
+> A Kubernetes remediation engine that understands failures before it fixes them.
 
-KubeRescue continuously watches Kubernetes pods for **CrashLoopBackOff**, provides
-useful diagnostic information, and can automatically delete unhealthy pods so
-their controller recreates them.
+KubeRescue watches Kubernetes workloads for failure states, collects the
+evidence needed to explain them, and takes **safe, bounded, truthful**
+remediation actions. Today it handles CrashLoopBackOff; the architecture is
+built to grow into a full evidence → diagnosis → policy → action → verify
+pipeline (see [Roadmap](#roadmap)).
 
-> ⚠️ **Experimental**
->
-> KubeRescue is intended **only for development and staging environments**.
-> It is **not production-ready** until safety features such as cooldowns,
-> retry budgets, policy controls, and audit logging are implemented.
+> ⚠️ **Pre-1.0.** Use in development and staging clusters. Production
+> safety features (cooldowns, policy engine, audit trail) land in upcoming
+> milestones — until then, run with `--dry-run` anywhere you care about.
 
 ---
+
+## Design principles
+
+1. **Safety over automation** — pods without a controller are never
+   deleted; every action is budgeted; dry-run is first-class.
+2. **Explainability over magic** — every action carries its evidence
+   (restart count, exit code, termination reason, owner) and every skip
+   carries its reason.
+3. **Truthful reporting** — a dry run is never counted as a remediation;
+   counters in reports reflect what actually happened.
+4. **Resilience** — a transient API error degrades one scan, never the
+   process; retries use capped exponential backoff.
 
 ## Features
 
-- 🔍 Detect pods stuck in `CrashLoopBackOff`
-- 📊 Display restart count, exit code, and termination reason
-- 🧪 Preview actions using `--dry-run`
-- 🎯 Filter workloads by namespace and label selector
-- 🔄 Run once or continuously
-- 📦 JSON output for CI/CD and automation
-- ☸️ Works with in-cluster config or local kubeconfig
+- 🔍 Detects pods stuck in `CrashLoopBackOff` with full evidence
+  (restarts, last exit code, termination reason, owning controller)
+- 🛡️ Refuses to delete bare pods — deletion only restarts
+  controller-managed workloads
+- 🧪 `--dry-run` previews every action without touching the cluster
+- 📉 `--max-restarts` caps remediations per scan
+- 📦 Versioned JSON reports (`schemaVersion: v1alpha1`) for automation;
+  reports on stdout, structured logs on stderr
+- 🚦 CI-friendly exit codes: `0` clean, `1` error, `2` findings
+- ☸️ In-cluster config or local kubeconfig (`--kubeconfig`, `--context`)
 
----
+## Install
 
-## How It Works
-
-```text
-                +------------------------+
-                | Kubernetes Cluster     |
-                +-----------+------------+
-                            |
-                            v
-                  Watch Pod Status
-                            |
-                            v
-                 CrashLoopBackOff?
-                     /        \
-                   No          Yes
-                   |            |
-                   |      Collect diagnostics
-                   |            |
-                   |      Print information
-                   |            |
-                   |      --dry-run ?
-                   |         /      \
-                   |      Yes        No
-                   |       |          |
-                   |   Report only    |
-                   |                  |
-                   +-------------> Delete Pod
-                                      |
-                                      v
-                          Controller recreates Pod
-```
-
----
-
-# Installation
-
-## From Source
+### From source
 
 ```bash
-git clone https://github.com/<your-org>/kuberescue.git
-cd kuberescue
-
-python -m venv .venv
-source .venv/bin/activate
-
-pip install -e ".[dev]"
+git clone https://github.com/sameeralam3127/KubeRescue.git
+cd KubeRescue
+make build
+bin/kuberescue --help
 ```
 
-Verify installation:
+### Docker
 
 ```bash
-kuberescue --help
-```
-
----
-
-# Quick Start
-
-Preview CrashLoopBackOff pods:
-
-```bash
-kuberescue \
-  --namespace default \
-  --once \
-  --dry-run
-```
-
-Automatically remediate:
-
-```bash
-kuberescue \
-  --namespace default \
-  --interval 10 \
-  --max-restarts 3
-```
-
-KubeRescue first attempts **in-cluster Kubernetes configuration** and falls back
-to your local kubeconfig automatically.
-
----
-
-# Example Output
-
-```text
-Namespace : default
-Pod       : api-7c8f9f6d9b-x2q4m
-Container : api
-
-Status
-------
-Waiting Reason      CrashLoopBackOff
-Restart Count       7
-Exit Code           137
-Last Termination    OOMKilled
-
-Action
-------
-Deleted pod (controller will recreate it)
-```
-
-JSON output:
-
-```json
-{
-  "detected": 1,
-  "remediated": 1,
-  "namespace": "default",
-  "selector": null,
-  "findings": [
-    {
-      "pod": "api-7c8f9f6d9b-x2q4m",
-      "container": "api",
-      "waiting_reason": "CrashLoopBackOff",
-      "restart_count": 7,
-      "last_terminated_reason": "OOMKilled",
-      "last_exit_code": 137
-    }
-  ]
-}
-```
-
----
-
-# Common Commands
-
-Scan once
-
-```bash
-kuberescue -n default --once
-```
-
-Preview only
-
-```bash
-kuberescue -n default --once --dry-run
-```
-
-Target a Deployment
-
-```bash
-kuberescue \
-  -n default \
-  -l app=api \
-  --once \
-  --dry-run
-```
-
-Continuous monitoring
-
-```bash
-kuberescue \
-  -n default \
-  --interval 5 \
-  --max-restarts 1
-```
-
-Automation-friendly JSON
-
-```bash
-kuberescue \
-  -n default \
-  --once \
-  --output json
-```
-
----
-
-# CLI Options
-
-| Option            | Description                      |
-| ----------------- | -------------------------------- |
-| `-n, --namespace` | Namespace to scan                |
-| `-l, --selector`  | Label selector                   |
-| `--dry-run`       | Preview only                     |
-| `--once`          | Scan once and exit               |
-| `-i, --interval`  | Scan interval in seconds         |
-| `--max-restarts`  | Maximum pods remediated per scan |
-| `-o, --output`    | `text` or `json`                 |
-
----
-
-# Docker
-
-Build
-
-```bash
-docker build -t kuberescue:local .
-```
-
-Run
-
-```bash
+make docker
 docker run --rm kuberescue:local --help
 ```
 
-The Docker build automatically executes the unit tests before producing the
-runtime image.
+## Quick start
 
----
+Preview what KubeRescue would do (changes nothing):
 
-# Demo
+```bash
+kuberescue monitor -n default --once --dry-run
+```
 
-A complete CrashLoopBackOff demonstration is included.
+Scan once and remediate, at most 3 restarts:
 
-Create demo namespace:
+```bash
+kuberescue monitor -n default --once --max-restarts 3
+```
+
+Monitor continuously:
+
+```bash
+kuberescue monitor -n default --interval 30s --max-restarts 3
+```
+
+JSON for automation (exit code 2 signals findings):
+
+```bash
+kuberescue monitor -n default --once --dry-run -o json
+```
+
+## Example output
+
+```text
+CrashLoopBackOff  default/api-7c8f9f6d9b-x2q4m
+  container=api restarts=7 lastReason=OOMKilled exitCode=137 owner=ReplicaSet/api-7c8f9f6d9b
+  action: restarted
+
+Summary: detected=1 restarted=1 skipped=0 failed=0
+```
+
+```json
+{
+  "schemaVersion": "v1alpha1",
+  "timestamp": "2026-07-18T12:00:00Z",
+  "namespace": "default",
+  "dryRun": true,
+  "detected": 1,
+  "restarted": 0,
+  "skipped": 0,
+  "failed": 0,
+  "findings": [
+    {
+      "namespace": "default",
+      "pod": "api-7c8f9f6d9b-x2q4m",
+      "container": "api",
+      "reason": "CrashLoopBackOff",
+      "restartCount": 7,
+      "lastTerminationReason": "OOMKilled",
+      "lastExitCode": 137,
+      "ownerKind": "ReplicaSet",
+      "ownerName": "api-7c8f9f6d9b"
+    }
+  ],
+  "actions": [{ "pod": "api-7c8f9f6d9b-x2q4m", "outcome": "dry-run" }]
+}
+```
+
+## CLI
+
+```text
+kuberescue monitor [flags]
+
+  -n, --namespace string    namespace to monitor (default "default")
+  -l, --selector string     label selector, for example app=api
+  -i, --interval duration   time between scans, for example 30s or 2m (default 30s)
+      --once                scan once and exit (exit code 2 when findings exist)
+      --dry-run             report what would be done without changing the cluster
+      --max-restarts int    maximum pods to restart per scan (0 = unlimited)
+  -o, --output string       text or json (default "text")
+
+Global: --kubeconfig, --context, --log-level
+```
+
+## Try the demo
 
 ```bash
 kubectl create namespace kuberescue-test
-```
+kubectl apply -n kuberescue-test -f examples/crashloop-demo.yaml
 
-Deploy the crashing workload:
+kuberescue monitor -n kuberescue-test --once --dry-run   # observe
+kuberescue monitor -n kuberescue-test --once             # remediate
 
-```bash
-kubectl apply \
-  -n kuberescue-test \
-  -f examples/crashloop-demo.yaml
-```
-
-Preview remediation:
-
-```bash
-kuberescue \
-  -n kuberescue-test \
-  --once \
-  --dry-run
-```
-
-Run continuously:
-
-```bash
-kuberescue \
-  -n kuberescue-test \
-  --interval 5 \
-  --max-restarts 1
-```
-
-Cleanup:
-
-```bash
 kubectl delete namespace kuberescue-test
 ```
 
----
+## Run in-cluster
 
-# Kubernetes Deployment
-
-Example manifests are available under:
-
-```
-deploy/kubernetes/
-```
-
-Apply them:
+Manifests under [deploy/kubernetes/](deploy/kubernetes/) ship with
+**namespaced RBAC** (a Role scoped to the monitored namespace — no
+ClusterRole), a non-root distroless image, and `--dry-run` enabled by
+default. Review and remove `--dry-run` deliberately.
 
 ```bash
 kubectl apply -f deploy/kubernetes/namespace.yaml
@@ -285,79 +161,50 @@ kubectl apply -f deploy/kubernetes/rbac.yaml
 kubectl apply -f deploy/kubernetes/deployment.yaml
 ```
 
-Update the Deployment manifest before use:
-
-- image
-- namespace
-- label selector
-- interval
-- restart limit
-
----
-
-# Project Structure
+## Architecture
 
 ```text
-.
-├── deploy/
-│   └── kubernetes/
-├── docs/
-├── examples/
-├── kuberescue/
-├── tests/
-├── Dockerfile
-├── pyproject.toml
-└── README.md
+Engine.Scan
+  └── Detector.Detect(pod) ──► Finding (evidence)
+        └── remediate.RestartPod ──► Result (restarted | dry-run | skipped | failed)
+              └── Report (versioned, truthful counters)
 ```
 
----
+Detectors are pure functions over pod state — no API calls, trivially
+testable. The `Finding` evidence type is the contract shared by detection,
+remediation, and reporting; future stages (diagnosis, policy, verification)
+slot into the middle without breaking it. See
+[docs/project-structure.md](docs/project-structure.md).
 
-# Development
+## Roadmap
 
-Run tests:
+KubeRescue is being built milestone by milestone toward an intelligent,
+policy-gated remediation platform:
+
+- **M1 — Diagnose:** `kuberescue diagnose` / `explain` for the five most
+  common failure classes (CrashLoopBackOff, OOMKilled, ImagePullBackOff,
+  Pending/FailedScheduling, stuck rollouts), with events + log evidence
+- **M2 — Safe remediation kernel:** per-cause actions (e.g. rollout undo,
+  report-only), policy gate (cooldowns, rate budgets, protected
+  namespaces/labels), `simulate` via server-side dry-run, audit history
+- **M3 — Operator:** CRDs (`RemediationPolicy`, `RemediationAction`),
+  informer-based controller, leader election, Prometheus metrics,
+  Kubernetes Events, approval workflow, Helm chart
+- **M4 — Ecosystem:** webhook/Slack notifications, Grafana dashboards,
+  OpenTelemetry, signed releases + SBOM, optional AI-assisted explanations
+  (never in the action path)
+
+## Development
 
 ```bash
-pytest -v
+make build   # bin/kuberescue
+make test    # race detector + coverage
+make lint    # gofmt + go vet
 ```
 
-Run all quality checks:
+See [docs/development.md](docs/development.md) and
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
-```bash
-black --check .
-ruff check .
-flake8 .
-mypy kuberescue
-bandit -r kuberescue
-pytest -v
-```
+## License
 
-See `docs/development.md` for contributor documentation.
-
----
-
-# Roadmap
-
-- [ ] Cooldown windows
-- [ ] Retry budgets
-- [ ] Kubernetes Watch API
-- [ ] Policy-based remediation
-- [ ] Slack/Webhook notifications
-- [ ] Prometheus metrics
-- [ ] Helm Chart
-- [ ] Production safety controls
-
----
-
-# Contributing
-
-Contributions are welcome!
-
-Please read **CONTRIBUTING.md** before opening a pull request.
-
----
-
-# License
-
-Licensed under the **MIT License**.
-
-See **LICENSE** for details.
+MIT — see [LICENSE](LICENSE).
