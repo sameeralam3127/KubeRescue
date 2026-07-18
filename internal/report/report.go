@@ -19,9 +19,11 @@ func JSON(w io.Writer, r *engine.Report) error {
 
 // Text writes a human-readable summary of the report.
 func Text(w io.Writer, r *engine.Report) error {
+	ew := &errWriter{w: w}
+
 	if r.Detected == 0 {
-		_, err := fmt.Fprintf(w, "No unhealthy pods found in namespace %q.\n", r.Namespace)
-		return err
+		ew.printf("No unhealthy pods found in namespace %q.\n", r.Namespace)
+		return ew.err
 	}
 
 	actionByPod := make(map[string]string, len(r.Actions))
@@ -37,7 +39,7 @@ func Text(w io.Writer, r *engine.Report) error {
 	for _, f := range r.Findings {
 		if !seen[f.Pod] {
 			seen[f.Pod] = true
-			fmt.Fprintf(w, "%s  %s/%s\n", f.Reason, f.Namespace, f.Pod)
+			ew.printf("%s  %s/%s\n", f.Reason, f.Namespace, f.Pod)
 		}
 		exitCode := "unknown"
 		if f.LastExitCode != nil {
@@ -51,10 +53,10 @@ func Text(w io.Writer, r *engine.Report) error {
 		if f.OwnerKind != "" {
 			owner = f.OwnerKind + "/" + f.OwnerName
 		}
-		fmt.Fprintf(w, "  container=%s restarts=%d lastReason=%s exitCode=%s owner=%s\n",
+		ew.printf("  container=%s restarts=%d lastReason=%s exitCode=%s owner=%s\n",
 			f.Container, f.RestartCount, lastReason, exitCode, owner)
 		if action, ok := actionByPod[f.Pod]; ok {
-			fmt.Fprintf(w, "  action: %s\n", action)
+			ew.printf("  action: %s\n", action)
 		}
 	}
 
@@ -62,7 +64,21 @@ func Text(w io.Writer, r *engine.Report) error {
 	if r.DryRun {
 		mode = " (dry run — nothing was changed)"
 	}
-	_, err := fmt.Fprintf(w, "\nSummary: detected=%d restarted=%d skipped=%d failed=%d%s\n",
+	ew.printf("\nSummary: detected=%d restarted=%d skipped=%d failed=%d%s\n",
 		r.Detected, r.Restarted, r.Skipped, r.Failed, mode)
-	return err
+	return ew.err
+}
+
+// errWriter remembers the first write error and drops subsequent writes,
+// so rendering code stays linear.
+type errWriter struct {
+	w   io.Writer
+	err error
+}
+
+func (ew *errWriter) printf(format string, args ...any) {
+	if ew.err != nil {
+		return
+	}
+	_, ew.err = fmt.Fprintf(ew.w, format, args...)
 }
