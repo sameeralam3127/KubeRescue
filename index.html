@@ -165,7 +165,7 @@
                         <i data-lucide="life-buoy" class="w-5 h-5 text-white"></i>
                     </div>
                     <span class="font-bold text-xl tracking-tight">Kube<span class="text-kube-400">Rescue</span></span>
-                    <span class="badge-beta text-xs font-bold px-2 py-0.5 rounded-full text-white">MVP</span>
+                    <span class="badge-beta text-xs font-bold px-2 py-0.5 rounded-full text-white">PRE-1.0</span>
                 </div>
                 <div class="hidden md:flex items-center gap-8 text-sm font-medium text-dark-300">
                     <a href="#what-it-does" class="hover:text-white transition-colors duration-200">Features</a>
@@ -204,7 +204,7 @@
             <div class="animate-slide-up">
                 <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-warning-500/10 border border-warning-500/20 text-warning-400 text-sm font-semibold mb-6">
                     <i data-lucide="alert-triangle" class="w-4 h-4"></i>
-                    Not production-ready yet — for dev & staging clusters only
+                    Pre-1.0 — for dev & staging clusters; use --dry-run anywhere you care about
                 </div>
             </div>
             <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6 animate-slide-up" style="animation-delay: 0.1s;">
@@ -213,9 +213,9 @@
                 <span class="gradient-animated bg-clip-text text-transparent">Never Stay Broken</span>
             </h1>
             <p class="text-lg sm:text-xl text-dark-300 max-w-3xl mx-auto mb-10 animate-slide-up" style="animation-delay: 0.2s;">
-                A lightweight auto-remediation engine that watches your pods, detects
-                <span class="text-danger-400 font-semibold">CrashLoopBackOff</span> states,
-                and gracefully restarts them — so your controllers always have a healthy replacement running.
+                A Kubernetes remediation engine, written in Go, that understands failures before it fixes them.
+                It detects <span class="text-danger-400 font-semibold">CrashLoopBackOff</span> with full evidence
+                and takes safe, bounded, truthful remediation actions.
             </p>
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style="animation-delay: 0.3s;">
                 <a href="#quick-start" class="group flex items-center gap-3 px-8 py-4 rounded-xl bg-white text-dark-900 font-semibold text-lg hover:bg-dark-100 transition-all duration-300 shadow-2xl shadow-white/10 hover:shadow-white/20">
@@ -228,8 +228,8 @@
                 </a>
             </div>
             <p class="text-dark-400 text-sm mt-6 animate-slide-up" style="animation-delay: 0.4s;">
-                <code class="font-mono text-accent-400 bg-accent-500/10 px-2 py-0.5 rounded text-xs">pip install -e ".[dev]"</code>
-                &nbsp;— it's that simple
+                <code class="font-mono text-accent-400 bg-accent-500/10 px-2 py-0.5 rounded text-xs">kuberescue monitor -n default --once --dry-run</code>
+                &nbsp;— preview before you remediate
             </p>
         </div>
     </section>
@@ -239,12 +239,12 @@
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
                 <div>
-                    <div class="text-3xl font-extrabold text-white mb-1">🐍</div>
-                    <p class="text-dark-400 text-sm font-medium">Pure Python</p>
+                    <div class="text-3xl font-extrabold text-white mb-1">🐹</div>
+                    <p class="text-dark-400 text-sm font-medium">Written in Go</p>
                 </div>
                 <div>
                     <div class="text-3xl font-extrabold text-white mb-1">⚡</div>
-                    <p class="text-dark-400 text-sm font-medium">Lightweight MVP</p>
+                    <p class="text-dark-400 text-sm font-medium">Single Binary</p>
                 </div>
                 <div>
                     <div class="text-3xl font-extrabold text-white mb-1">🐳</div>
@@ -263,7 +263,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16">
                 <h2 class="text-3xl sm:text-4xl font-extrabold mb-4">What It <span class="text-kube-400">Does</span></h2>
-                <p class="text-dark-400 text-lg max-w-2xl mx-auto">A simple yet effective remediation loop for development and staging clusters.</p>
+                <p class="text-dark-400 text-lg max-w-2xl mx-auto">A safety-first remediation loop: evidence in, bounded action out, truthful report always.</p>
             </div>
 
             <div class="grid md:grid-cols-2 gap-6 mb-16">
@@ -274,7 +274,7 @@
                             <i data-lucide="eye" class="w-6 h-6 text-kube-400"></i>
                         </div>
                         <h3 class="text-xl font-bold mb-3">Watches Pods</h3>
-                        <p class="text-dark-300">Monitors all pods in a specified Kubernetes namespace, keeping a constant eye on container states.</p>
+                        <p class="text-dark-300">Monitors pods in a namespace (optionally filtered by label selector), once or on an interval — in-cluster or via your local kubeconfig.</p>
                     </div>
                 </div>
                 <div class="glass-card rounded-2xl p-8 relative overflow-hidden group">
@@ -283,8 +283,8 @@
                         <div class="w-12 h-12 rounded-xl bg-danger-500/15 flex items-center justify-center mb-5">
                             <i data-lucide="bug" class="w-6 h-6 text-danger-400"></i>
                         </div>
-                        <h3 class="text-xl font-bold mb-3">Detects CrashLoopBackOff</h3>
-                        <p class="text-dark-300">Identifies containers stuck in <code class="font-mono text-danger-400 bg-danger-500/10 px-1.5 py-0.5 rounded text-xs">CrashLoopBackOff</code> state and flags them for remediation.</p>
+                        <h3 class="text-xl font-bold mb-3">Detects With Evidence</h3>
+                        <p class="text-dark-300">Finds containers stuck in <code class="font-mono text-danger-400 bg-danger-500/10 px-1.5 py-0.5 rounded text-xs">CrashLoopBackOff</code> and records why: restart count, last exit code, termination reason, and owning controller.</p>
                     </div>
                 </div>
                 <div class="glass-card rounded-2xl p-8 relative overflow-hidden group">
@@ -293,8 +293,8 @@
                         <div class="w-12 h-12 rounded-xl bg-accent-500/15 flex items-center justify-center mb-5">
                             <i data-lucide="trash-2" class="w-6 h-6 text-accent-400"></i>
                         </div>
-                        <h3 class="text-xl font-bold mb-3">Deletes Failed Pods</h3>
-                        <p class="text-dark-300">Removes the problematic pod so its controller can spin up a fresh, healthy replacement automatically.</p>
+                        <h3 class="text-xl font-bold mb-3">Restarts Safely</h3>
+                        <p class="text-dark-300">Restarts only controller-managed pods — bare pods are never deleted. <code class="font-mono text-accent-400 bg-accent-500/10 px-1.5 py-0.5 rounded text-xs">--dry-run</code> previews everything and <code class="font-mono text-accent-400 bg-accent-500/10 px-1.5 py-0.5 rounded text-xs">--max-restarts</code> caps actions per scan.</p>
                     </div>
                 </div>
                 <div class="glass-card rounded-2xl p-8 relative overflow-hidden group">
@@ -303,8 +303,8 @@
                         <div class="w-12 h-12 rounded-xl bg-kube-500/15 flex items-center justify-center mb-5">
                             <i data-lucide="refresh-cw" class="w-6 h-6 text-kube-400"></i>
                         </div>
-                        <h3 class="text-xl font-bold mb-3">Kubernetes Recreates</h3>
-                        <p class="text-dark-300">The pod's Deployment, ReplicaSet, or StatefulSet controller automatically recreates the pod after deletion.</p>
+                        <h3 class="text-xl font-bold mb-3">Reports Truthfully</h3>
+                        <p class="text-dark-300">Versioned JSON reports on stdout, structured logs on stderr, CI-friendly exit codes — and a dry run is never counted as a remediation.</p>
                     </div>
                 </div>
             </div>
@@ -319,19 +319,19 @@
                 </div>
                 <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     <span class="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/3 border border-white/5 text-dark-300 text-sm">
-                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Retry budgets
+                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Diagnose / explain commands
                     </span>
                     <span class="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/3 border border-white/5 text-dark-300 text-sm">
-                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Cooldown windows
+                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Policy engine & cooldowns
                     </span>
                     <span class="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/3 border border-white/5 text-dark-300 text-sm">
-                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Policy-based remediation
+                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Operator with CRDs
                     </span>
                     <span class="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/3 border border-white/5 text-dark-300 text-sm">
                         <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Slack / webhook output
                     </span>
                     <span class="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/3 border border-white/5 text-dark-300 text-sm">
-                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Metrics & monitoring
+                        <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Prometheus metrics
                     </span>
                     <span class="flex items-center gap-2 px-4 py-3 rounded-lg bg-white/3 border border-white/5 text-dark-300 text-sm">
                         <i data-lucide="x-circle" class="w-4 h-4 text-dark-500 flex-shrink-0"></i> Helm chart packaging
@@ -354,12 +354,13 @@
                 <div class="glass-card rounded-2xl p-6 sm:p-8">
                     <div class="flex items-center gap-3 mb-4">
                         <span class="w-8 h-8 rounded-lg bg-kube-500 text-white flex items-center justify-center text-sm font-bold">1</span>
-                        <h3 class="font-semibold text-lg">Create & Activate Virtual Environment</h3>
+                        <h3 class="font-semibold text-lg">Clone & Build</h3>
                     </div>
                     <div class="code-block p-4 sm:p-6">
-                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-accent-400">python</span> -m venv .venv
-<span class="text-accent-400">source</span> .venv/bin/activate
-<span class="text-accent-400">pip</span> install -e <span class="text-warning-400">".[dev]"</span></code></pre>
+                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-accent-400">git</span> clone https://github.com/sameeralam3127/KubeRescue.git
+<span class="text-accent-400">cd</span> KubeRescue
+<span class="text-accent-400">make</span> build
+<span class="text-accent-400">bin/kuberescue</span> --help</code></pre>
                     </div>
                 </div>
 
@@ -367,25 +368,29 @@
                 <div class="glass-card rounded-2xl p-6 sm:p-8">
                     <div class="flex items-center gap-3 mb-4">
                         <span class="w-8 h-8 rounded-lg bg-kube-500 text-white flex items-center justify-center text-sm font-bold">2</span>
-                        <h3 class="font-semibold text-lg">Run Unit Tests</h3>
+                        <h3 class="font-semibold text-lg">Preview With Dry-Run</h3>
                     </div>
                     <div class="code-block p-4 sm:p-6">
-                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-accent-400">pytest</span> -v</code></pre>
+                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-accent-400">kuberescue</span> monitor -n default --once --dry-run</code></pre>
                     </div>
+                    <p class="text-dark-400 text-sm mt-4 flex items-center gap-2">
+                        <i data-lucide="info" class="w-4 h-4"></i>
+                        Reports what it would do without touching the cluster. Add <code class="font-mono text-xs">-o json</code> for automation.
+                    </p>
                 </div>
 
                 <!-- Step 3 -->
                 <div class="glass-card rounded-2xl p-6 sm:p-8">
                     <div class="flex items-center gap-3 mb-4">
                         <span class="w-8 h-8 rounded-lg bg-kube-500 text-white flex items-center justify-center text-sm font-bold">3</span>
-                        <h3 class="font-semibold text-lg">Run KubeRescue</h3>
+                        <h3 class="font-semibold text-lg">Monitor & Remediate</h3>
                     </div>
                     <div class="code-block p-4 sm:p-6">
-                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-accent-400">kuberescue</span> --namespace default</code></pre>
+                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-accent-400">kuberescue</span> monitor -n default --interval 30s --max-restarts 3</code></pre>
                     </div>
                     <p class="text-dark-400 text-sm mt-4 flex items-center gap-2">
                         <i data-lucide="info" class="w-4 h-4"></i>
-                        Tries in-cluster config first, falls back to local kubeconfig.
+                        Tries in-cluster config first, falls back to local kubeconfig (<code class="font-mono text-xs">--kubeconfig</code>, <code class="font-mono text-xs">--context</code>).
                     </p>
                 </div>
             </div>
@@ -400,14 +405,14 @@
                     <i data-lucide="container" class="w-4 h-4"></i> Docker Ready
                 </div>
                 <h2 class="text-3xl sm:text-4xl font-extrabold mb-4">🐳 Docker Image</h2>
-                <p class="text-dark-400 text-lg max-w-2xl mx-auto">Build once, run anywhere. The Docker build includes the full test suite.</p>
+                <p class="text-dark-400 text-lg max-w-2xl mx-auto">A non-root distroless image with a single static Go binary inside.</p>
             </div>
 
             <div class="max-w-3xl mx-auto space-y-6">
                 <div class="glass-card rounded-2xl p-6 sm:p-8">
                     <h3 class="font-semibold text-lg mb-4">Build the Image</h3>
                     <div class="code-block p-4 sm:p-6">
-                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-accent-400">docker</span> build -t kuberescue:local .</code></pre>
+                        <pre class="font-mono text-sm text-dark-200"><code><span class="text-accent-400">make</span> docker</code></pre>
                     </div>
                 </div>
                 <div class="glass-card rounded-2xl p-6 sm:p-8">
@@ -450,8 +455,9 @@
 <span class="text-dark-500"># Deploy crashing workload</span>
 <span class="text-accent-400">kubectl</span> apply -n kuberescue-test -f examples/crashloop-demo.yaml
 
-<span class="text-dark-500"># Run KubeRescue</span>
-<span class="text-accent-400">kuberescue</span> --namespace kuberescue-test
+<span class="text-dark-500"># Observe first, then remediate</span>
+<span class="text-accent-400">kuberescue</span> monitor -n kuberescue-test --once --dry-run
+<span class="text-accent-400">kuberescue</span> monitor -n kuberescue-test --once
 
 <span class="text-dark-500"># Watch pods get replaced (in another terminal)</span>
 <span class="text-accent-400">kubectl</span> get pods -n kuberescue-test
@@ -484,8 +490,8 @@
                                 <i data-lucide="check" class="w-5 h-5 text-kube-400"></i>
                             </div>
                             <div class="glass-card rounded-2xl p-5 flex-1">
-                                <h3 class="font-bold text-white mb-1">✅ Core MVP</h3>
-                                <p class="text-dark-300 text-sm">Namespace watching, CrashLoopBackOff detection, pod deletion. <span class="text-accent-400 font-medium">Done!</span></p>
+                                <h3 class="font-bold text-white mb-1">✅ M0 — Go Rewrite</h3>
+                                <p class="text-dark-300 text-sm">Safety-first remediation kernel: evidence-rich detection, controller-only restarts, dry-run, restart budgets, versioned JSON reports. <span class="text-accent-400 font-medium">Done!</span></p>
                             </div>
                         </div>
                         <div class="flex gap-4 sm:gap-8 items-start relative">
@@ -493,8 +499,8 @@
                                 <i data-lucide="clock" class="w-5 h-5 text-warning-400"></i>
                             </div>
                             <div class="glass-card rounded-2xl p-5 flex-1">
-                                <h3 class="font-bold text-white mb-1">🔜 Retry Limits & Cooldowns</h3>
-                                <p class="text-dark-300 text-sm">Prevent infinite restart loops with configurable retry budgets and cooldown windows.</p>
+                                <h3 class="font-bold text-white mb-1">🔜 M1 — Diagnose</h3>
+                                <p class="text-dark-300 text-sm"><code class="font-mono text-xs">kuberescue diagnose</code> / <code class="font-mono text-xs">explain</code> for the five most common failure classes, with events and log evidence.</p>
                             </div>
                         </div>
                         <div class="flex gap-4 sm:gap-8 items-start relative">
@@ -502,8 +508,8 @@
                                 <i data-lucide="clock" class="w-5 h-5 text-warning-400"></i>
                             </div>
                             <div class="glass-card rounded-2xl p-5 flex-1">
-                                <h3 class="font-bold text-white mb-1">🔜 Watch Streams</h3>
-                                <p class="text-dark-300 text-sm">Replace polling with Kubernetes watch streams for real-time event-driven remediation.</p>
+                                <h3 class="font-bold text-white mb-1">🔜 M2 — Safe Remediation Kernel</h3>
+                                <p class="text-dark-300 text-sm">Per-cause actions, policy gate with cooldowns and rate budgets, protected namespaces, simulate via server-side dry-run, audit history.</p>
                             </div>
                         </div>
                         <div class="flex gap-4 sm:gap-8 items-start relative">
@@ -511,8 +517,8 @@
                                 <i data-lucide="circle" class="w-4 h-4 text-dark-500"></i>
                             </div>
                             <div class="glass-card rounded-2xl p-5 flex-1">
-                                <h3 class="font-bold text-white mb-1">📋 Policy-Based Rules</h3>
-                                <p class="text-dark-300 text-sm">Define custom remediation policies for different workloads and namespaces.</p>
+                                <h3 class="font-bold text-white mb-1">☸️ M3 — Operator</h3>
+                                <p class="text-dark-300 text-sm">CRDs for policies and actions, informer-based controller, leader election, Prometheus metrics, approval workflow, Helm chart.</p>
                             </div>
                         </div>
                         <div class="flex gap-4 sm:gap-8 items-start relative">
@@ -520,17 +526,8 @@
                                 <i data-lucide="circle" class="w-4 h-4 text-dark-500"></i>
                             </div>
                             <div class="glass-card rounded-2xl p-5 flex-1">
-                                <h3 class="font-bold text-white mb-1">🔔 Notifications & Metrics</h3>
-                                <p class="text-dark-300 text-sm">Slack, webhook, and Prometheus metrics output for observability.</p>
-                            </div>
-                        </div>
-                        <div class="flex gap-4 sm:gap-8 items-start relative">
-                            <div class="w-10 h-10 rounded-full bg-dark-700/50 border-2 border-dark-600 flex items-center justify-center flex-shrink-0 z-10 hidden sm:flex">
-                                <i data-lucide="circle" class="w-4 h-4 text-dark-500"></i>
-                            </div>
-                            <div class="glass-card rounded-2xl p-5 flex-1">
-                                <h3 class="font-bold text-white mb-1">📦 Helm Chart</h3>
-                                <p class="text-dark-300 text-sm">Package KubeRescue for safer, versioned cluster deployments.</p>
+                                <h3 class="font-bold text-white mb-1">🌐 M4 — Ecosystem</h3>
+                                <p class="text-dark-300 text-sm">Slack and webhook notifications, Grafana dashboards, OpenTelemetry, signed releases with SBOM.</p>
                             </div>
                         </div>
                     </div>
