@@ -2,15 +2,36 @@
 
 ```text
 .
-├── deploy/kubernetes/     Kubernetes manifests for local or staging installs
-├── docs/                  Maintainer and contributor documentation
+├── cmd/kuberescue/        CLI entry point (main only; logic lives in internal/)
+├── internal/
+│   ├── cli/               Cobra commands, flags, exit codes
+│   ├── detect/            Detector interface + detectors (pure, no API calls)
+│   ├── remediate/         Remediation actions with truthful outcomes
+│   ├── engine/            Scan/monitor loops, error resilience, Report type
+│   ├── report/            Text and JSON report rendering
+│   └── kube/              Kubernetes client construction
+├── deploy/kubernetes/     In-cluster manifests (namespaced RBAC by default)
+├── docs/                  Contributor and design documentation
 ├── examples/              Demo workloads for manual testing
-├── kuberescue/             Python package source
-├── tests/                 Unit tests
-├── Dockerfile             Container build with test stage
-├── pyproject.toml         Python package and tool configuration
-└── README.md              User-facing quick start
+├── Dockerfile             Multi-stage build, distroless non-root runtime
+├── Makefile               build / test / lint / docker targets
+└── go.mod
 ```
 
-The project is intentionally small. New directories should be added only when
-they support a real workflow such as packaging, deployment, examples, or docs.
+## Data flow
+
+```text
+Engine.Scan
+  └── list pods (namespace + selector)
+        └── Detector.Detect(pod) -> []Finding      (evidence, read-only)
+              └── remediate.RestartPod -> Result   (restarted | dry-run | skipped | failed)
+                    └── Report                     (versioned JSON / text, truthful counters)
+```
+
+The `Finding` type in `internal/detect` is the contract everything shares:
+detection produces it, remediation consumes it, reports serialize it. Future
+milestones (diagnosis, policy, verification) slot between detection and
+remediation without changing this shape.
+
+New directories should be added only when they support a real workflow such
+as packaging, deployment, examples, or docs.
