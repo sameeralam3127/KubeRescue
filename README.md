@@ -8,7 +8,8 @@ remediation actions. Today it handles CrashLoopBackOff; the architecture is
 built to grow into a full evidence → diagnosis → policy → action → verify
 pipeline (see [Roadmap](#roadmap)).
 
-> ⚠️ **Pre-1.0.** Use in development and staging clusters. Production
+> [!WARNING]
+> **Pre-1.0.** Use in development and staging clusters. Production
 > safety features (cooldowns, policy engine, audit trail) land in upcoming
 > milestones — until then, run with `--dry-run` anywhere you care about.
 
@@ -28,16 +29,16 @@ pipeline (see [Roadmap](#roadmap)).
 
 ## Features
 
-- 🔍 Detects pods stuck in `CrashLoopBackOff` with full evidence
+- Detects pods stuck in `CrashLoopBackOff` with full evidence
   (restarts, last exit code, termination reason, owning controller)
-- 🛡️ Refuses to delete bare pods — deletion only restarts
+- Refuses to delete bare pods — deletion only restarts
   controller-managed workloads
-- 🧪 `--dry-run` previews every action without touching the cluster
-- 📉 `--max-restarts` caps remediations per scan
-- 📦 Versioned JSON reports (`schemaVersion: v1alpha1`) for automation;
+- `--dry-run` previews every action without touching the cluster
+- `--max-restarts` caps remediations per scan
+- Versioned JSON reports (`schemaVersion: v1alpha1`) for automation;
   reports on stdout, structured logs on stderr
-- 🚦 CI-friendly exit codes: `0` clean, `1` error, `2` findings
-- ☸️ In-cluster config or local kubeconfig (`--kubeconfig`, `--context`)
+- CI-friendly exit codes: `0` clean, `1` error, `2` findings
+- In-cluster config or local kubeconfig (`--kubeconfig`, `--context`)
 
 ## Install
 
@@ -153,7 +154,11 @@ kubectl delete namespace kuberescue-test
 Manifests under [deploy/kubernetes/](deploy/kubernetes/) ship with
 **namespaced RBAC** (a Role scoped to the monitored namespace — no
 ClusterRole), a non-root distroless image, and `--dry-run` enabled by
-default. Review and remove `--dry-run` deliberately.
+default.
+
+> [!IMPORTANT]
+> The deployment ships with `--dry-run` enabled. Review the manifests and
+> remove the flag deliberately when you are ready to remediate for real.
 
 ```bash
 kubectl apply -f deploy/kubernetes/namespace.yaml
