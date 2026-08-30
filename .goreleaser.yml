@@ -1,0 +1,70 @@
+version: 2
+
+project_name: kuberescue
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: kuberescue
+    main: ./cmd/kuberescue
+    binary: kuberescue
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X github.com/sameeralam3127/kuberescue/internal/cli.version={{ .Version }}
+
+archives:
+  - id: kuberescue
+    formats: [tar.gz]
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "Merge pull request"
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 0
+    - title: Fixes
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+      order: 1
+    - title: Other changes
+      order: 999
+
+dockers_v2:
+  - ids: [kuberescue]
+    images:
+      - ghcr.io/sameeralam3127/kuberescue
+    tags:
+      - "{{ .Version }}"
+      - latest
+    dockerfile: Dockerfile.goreleaser
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    labels:
+      org.opencontainers.image.source: https://github.com/sameeralam3127/KubeRescue
+
+# Homebrew (homebrew_casks) and krew (krews) publishing are deliberately not
+# configured yet: both need a HOMEBREW_TAP_GITHUB_TOKEN secret (a PAT scoped
+# to the sameeralam3127/homebrew-kuberescue and sameeralam3127/krew-index
+# repos, which exist but are otherwise unused) that can only be minted by
+# hand in the GitHub UI. Add those blocks back once that token is in place.

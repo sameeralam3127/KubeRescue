@@ -1,0 +1,22 @@
+name: Feature request
+description: Suggest an addition or change to KubeRescue
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: A failure class you can't detect, a workflow that's missing, etc.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed approach
+      description: How you'd expect it to work, if you have a preference
+  - type: markdown
+    attributes:
+      value: |
+        Safety invariants are non-negotiable (see CONTRIBUTING.md): truthful
+        outcomes, no deleting bare pods, dry-run by default in-cluster.
+        Proposals that weaken these will need a strong justification.

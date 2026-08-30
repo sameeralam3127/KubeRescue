@@ -1,5 +1,10 @@
 # KubeRescue
 
+[![CI](https://github.com/sameeralam3127/KubeRescue/actions/workflows/ci.yml/badge.svg)](https://github.com/sameeralam3127/KubeRescue/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/sameeralam3127/KubeRescue)](https://github.com/sameeralam3127/KubeRescue/releases/latest)
+[![Go Report Card](https://goreportcard.com/badge/github.com/sameeralam3127/kuberescue)](https://goreportcard.com/report/github.com/sameeralam3127/kuberescue)
+[![License](https://img.shields.io/github/license/sameeralam3127/KubeRescue)](LICENSE)
+
 > A Kubernetes remediation engine that understands failures before it fixes them.
 
 KubeRescue watches Kubernetes workloads for failure states, collects the
@@ -31,6 +36,9 @@ pipeline (see [Roadmap](#roadmap)).
 
 - Detects pods stuck in `CrashLoopBackOff` with full evidence
   (restarts, last exit code, termination reason, owning controller)
+- `kuberescue diagnose` explains **five** failure classes — CrashLoopBackOff,
+  OOMKilled, ImagePullBackOff, Pending/FailedScheduling, and stuck
+  rollouts — with the events behind each one, entirely read-only
 - Refuses to delete bare pods — deletion only restarts
   controller-managed workloads
 - `--dry-run` previews every action without touching the cluster
@@ -42,6 +50,18 @@ pipeline (see [Roadmap](#roadmap)).
 
 ## Install
 
+### Prebuilt binary
+
+Download the archive for your platform from the
+[latest release](https://github.com/sameeralam3127/KubeRescue/releases/latest),
+verify it against `checksums.txt`, and put the binary on your `PATH`.
+
+### Docker
+
+```bash
+docker run --rm ghcr.io/sameeralam3127/kuberescue:latest --help
+```
+
 ### From source
 
 ```bash
@@ -49,13 +69,6 @@ git clone https://github.com/sameeralam3127/KubeRescue.git
 cd KubeRescue
 make build
 bin/kuberescue --help
-```
-
-### Docker
-
-```bash
-make docker
-docker run --rm kuberescue:local --help
 ```
 
 ## Quick start
@@ -134,7 +147,26 @@ kuberescue monitor [flags]
       --max-restarts int    maximum pods to restart per scan (0 = unlimited)
   -o, --output string       text or json (default "text")
 
+kuberescue diagnose [pod] [flags]
+
+  -n, --namespace string    namespace to diagnose (default "default")
+  -l, --selector string     label selector, for example app=api
+  -o, --output string       text or json (default "text")
+
 Global: --kubeconfig, --context, --log-level
+```
+
+`diagnose` never mutates the cluster — it only reads pods, Deployments, and
+events, and explains what it finds:
+
+```text
+$ kuberescue diagnose -n default
+OOMKilled  default/api-7c8f9f6d9b-x2q4m container=api owner=ReplicaSet/api-7c8f9f6d9b
+  container "api" was killed for exceeding its memory limit; raise the limit or
+  investigate a possible memory leak.
+  event: BackOff x3 — Back-off restarting failed container api in pod ...
+
+Summary: detected=1
 ```
 
 ## Try the demo
@@ -177,8 +209,10 @@ Engine.Scan
 
 Detectors are pure functions over pod state — no API calls, trivially
 testable. The `Finding` evidence type is the contract shared by detection,
-remediation, and reporting; future stages (diagnosis, policy, verification)
-slot into the middle without breaking it. See
+remediation, and reporting. `kuberescue diagnose` reuses the same detectors
+in a read-only path (`internal/diagnose`) that never calls `remediate`,
+adding events and a plain-language explanation per finding; future stages
+(policy, verification) slot in without breaking either shape. See
 [docs/project-structure.md](docs/project-structure.md).
 
 ## Roadmap
@@ -186,9 +220,12 @@ slot into the middle without breaking it. See
 KubeRescue is being built milestone by milestone toward an intelligent,
 policy-gated remediation platform:
 
-- **M1 — Diagnose:** `kuberescue diagnose` / `explain` for the five most
+- **M1 — Diagnose (shipped):** `kuberescue diagnose` for the five most
   common failure classes (CrashLoopBackOff, OOMKilled, ImagePullBackOff,
-  Pending/FailedScheduling, stuck rollouts), with events + log evidence
+  Pending/FailedScheduling, stuck rollouts), with event evidence and a
+  narrow-to-one-pod mode. Homebrew/krew packaging is configured but not yet
+  enabled — it needs a cross-repo token only a human can mint; see
+  [docs/development.md](docs/development.md#releasing)
 - **M2 — Safe remediation kernel:** per-cause actions (e.g. rollout undo,
   report-only), policy gate (cooldowns, rate budgets, protected
   namespaces/labels), `simulate` via server-side dry-run, audit history
