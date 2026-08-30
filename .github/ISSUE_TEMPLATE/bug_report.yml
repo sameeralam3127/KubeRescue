@@ -1,0 +1,38 @@
+name: Bug report
+description: Something didn't work the way it should
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: KubeRescue version
+      description: Output of `kuberescue --version`
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: The exact command you ran
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include output — text or JSON report, and stderr logs if relevant
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Cluster context
+      description: Kubernetes version, and whether this is a fake/kind cluster or real

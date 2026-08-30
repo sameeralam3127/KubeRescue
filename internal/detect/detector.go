@@ -24,6 +24,10 @@ type Finding struct {
 	LastExitCode          *int32 `json:"lastExitCode,omitempty"`
 	OwnerKind             string `json:"ownerKind,omitempty"`
 	OwnerName             string `json:"ownerName,omitempty"`
+	// Message carries free-text detail the API server attaches to the
+	// condition (a waiting reason or a scheduling condition), when the
+	// detector has one worth surfacing.
+	Message string `json:"message,omitempty"`
 }
 
 // Detector inspects a pod and reports zero or more findings.

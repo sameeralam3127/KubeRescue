@@ -1,0 +1,8 @@
+FROM gcr.io/distroless/static:nonroot
+
+COPY kuberescue /kuberescue
+
+USER nonroot:nonroot
+
+ENTRYPOINT ["/kuberescue"]
+CMD ["--help"]

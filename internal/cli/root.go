@@ -44,6 +44,7 @@ func Execute() int {
 	root.PersistentFlags().StringVar(&opts.logLevel, "log-level", "info", "log level: debug, info, warn, error")
 
 	root.AddCommand(newMonitorCommand(opts))
+	root.AddCommand(newDiagnoseCommand(opts))
 
 	code := ExitOK
 	root.SetArgs(os.Args[1:])
