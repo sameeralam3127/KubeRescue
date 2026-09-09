@@ -38,6 +38,27 @@ bin/kuberescue monitor -n default --once --dry-run
   off each finding's `Reason`, not a model call — diagnosis stays
   reproducible, and AI stays out of the action path entirely.
 
+## Vulnerability scanning
+
+`scripts/vulncheck.sh` runs govulncheck with JSON output and buckets each
+finding by the module of `trace[0]` — the vulnerable symbol's own frame.
+`stdlib` findings are **toolchain** vulnerabilities, everything else is a
+**module** vulnerability.
+
+The split is there because the two fail differently. A toolchain CVE is
+published against whatever version `go.mod` pins, on a schedule nobody here
+controls, so making it fail pull requests means unrelated changes get
+blocked by a one-line `go.mod` bump (this happened twice: commit 41b9386 and
+issue #24). So `--mode pr`, used by CI, fails only on module findings and
+reports toolchain ones in the job summary; `--mode full`, used by the
+scheduled `Vulncheck` workflow and by `make vulncheck`, fails on both and
+files an issue labelled `vulncheck` that closes itself when a later run is
+clean.
+
+`make vulncheck-test` runs the classifier against recorded govulncheck JSON
+in `scripts/testdata/` — including a stdlib finding whose call stack reaches
+into our own packages, which must still bucket as toolchain.
+
 ## Releasing
 
 Push a `vX.Y.Z` tag and `.github/workflows/release.yml` takes it from

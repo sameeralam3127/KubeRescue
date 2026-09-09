@@ -1,0 +1,5 @@
+{"config":{"protocol_version":"v1.0.0","scanner_name":"govulncheck","scanner_version":"v1.8.0","db":"https://vuln.go.dev","go_version":"go1.26.6","scan_level":"symbol","scan_mode":"source"}}
+{"osv":{"id":"GO-2026-6218","summary":"Denial of service in crypto/tls"}}
+{"osv":{"id":"GO-2025-1234","summary":"Something in a dependency"}}
+{"finding":{"osv":"GO-2026-6218","fixed_version":"v1.26.7","trace":[{"module":"stdlib","package":"crypto/tls","function":"Conn.Handshake"}]}}
+{"finding":{"osv":"GO-2025-1234","fixed_version":"v0.36.3","trace":[{"module":"k8s.io/apimachinery","package":"k8s.io/apimachinery/pkg/util/yaml","function":"Unmarshal"},{"module":"github.com/sameeralam3127/kuberescue","package":"github.com/sameeralam3127/kuberescue/internal/cli","function":"run"}]}}
