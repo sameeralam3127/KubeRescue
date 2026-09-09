@@ -57,7 +57,15 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Shellcheck the vulncheck scripts
+        run: shellcheck scripts/*.sh
+
+      - name: Self-test the vulncheck classifier
+        run: ./scripts/vulncheck_test.sh
+
+      # Pull requests fail on dependency vulnerabilities only. A stdlib CVE can
+      # be disclosed against the pinned toolchain at any time and has nothing to
+      # do with the pull request that happens to run next, so it is reported in
+      # the job summary here and chased by .github/workflows/vulncheck.yml.
       - name: govulncheck
-        run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./...
+        run: ./scripts/vulncheck.sh --mode pr

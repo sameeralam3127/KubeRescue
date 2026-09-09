@@ -1,0 +1,96 @@
+name: Vulncheck
+
+# Scheduled, strict govulncheck. This is where toolchain (standard library)
+# vulnerabilities are tracked: they fail here and open an issue, instead of
+# failing an unrelated pull request that never touched the dependency graph.
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  vulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: govulncheck
+        id: scan
+        run: ./scripts/vulncheck.sh --mode full --report report.md
+        continue-on-error: true
+
+      - name: File, update, or close the tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          IDS: ${{ steps.scan.outputs.ids }}
+          TOOLCHAIN_COUNT: ${{ steps.scan.outputs.toolchain_count }}
+          MODULE_COUNT: ${{ steps.scan.outputs.module_count }}
+        run: |
+          set -euo pipefail
+
+          # The script writes its counts before exiting, so empty counts mean it
+          # never got as far as scanning (tooling or network failure). Touch
+          # nothing in that case; the last step still fails the run.
+          if [ -z "${TOOLCHAIN_COUNT:-}" ] || [ -z "${MODULE_COUNT:-}" ]; then
+            echo "govulncheck did not produce results; leaving issues untouched" >&2
+            exit 0
+          fi
+
+          gh label create vulncheck --color d73a4a \
+            --description "Opened by the scheduled govulncheck run" --force
+
+          existing="$(gh issue list --repo "$REPO" --state open --label vulncheck \
+            --json number --jq '.[0].number // empty')"
+
+          # Nothing found: close the tracking issue if one is open.
+          if [ "${TOOLCHAIN_COUNT:-0}" = "0" ] && [ "${MODULE_COUNT:-0}" = "0" ]; then
+            if [ -n "$existing" ]; then
+              gh issue close "$existing" --repo "$REPO" \
+                --comment "govulncheck is clean as of [this run]($RUN_URL). Closing."
+            fi
+            echo "no vulnerabilities"
+            exit 0
+          fi
+
+          {
+            cat report.md
+            echo
+            echo "Reported by [the scheduled vulncheck run]($RUN_URL)."
+            echo "This issue closes itself once a run comes back clean."
+            echo
+            echo "<!-- vulncheck-ids: $IDS -->"
+          } > body.md
+
+          title="govulncheck: $TOOLCHAIN_COUNT toolchain, $MODULE_COUNT module vulnerability(ies)"
+
+          if [ -z "$existing" ]; then
+            gh issue create --repo "$REPO" --label vulncheck \
+              --title "$title" --body-file body.md
+            exit 0
+          fi
+
+          # Only comment when the set of vulnerabilities actually changed, so a
+          # long-lived issue does not collect one comment per day.
+          previous="$(gh issue view "$existing" --repo "$REPO" --json body --jq .body \
+            | sed -n 's/.*<!-- vulncheck-ids: \(.*\) -->.*/\1/p' | head -1)"
+          gh issue edit "$existing" --repo "$REPO" --title "$title" --body-file body.md
+          if [ "$previous" != "$IDS" ]; then
+            gh issue comment "$existing" --repo "$REPO" \
+              --body "Findings changed in [this run]($RUN_URL): now \`$IDS\` (was \`${previous:-none}\`)."
+          fi
+
+      - name: Fail the run when vulnerabilities were found
+        if: steps.scan.outcome == 'failure'
+        run: exit 1
